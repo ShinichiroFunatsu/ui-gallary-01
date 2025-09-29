@@ -97,8 +97,8 @@ private fun GalleryItem.ListItem(modifier: Modifier = Modifier) {
 
 @Composable
 private fun HelloWorldDialogItem() {
-    // 初期表示でダイアログを見せるために初期値をtrueにする
-    var isDialogVisible by rememberSaveable { mutableStateOf(true) }
+    // 初期状態ではダイアログを非表示にする
+    var isDialogVisible by rememberSaveable { mutableStateOf(false) }
 
     if (isDialogVisible) {
         AlertDialog(
