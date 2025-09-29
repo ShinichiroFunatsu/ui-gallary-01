@@ -124,10 +124,12 @@ private fun HelloWorldDialogItem() {
     if (isDialogVisible) {
         Dialog(onDismissRequest = { isDialogVisible = false }) {
             // 幻想的な雰囲気を演出するためのグラデーション背景付きボックス
+            val waveMotion = rememberWaveMotion()
+
             Box(
                 modifier = Modifier
                     .widthIn(min = 280.dp)
-                    .glowingDialogBackground()
+                    .glowingDialogBackground(waveMotion)
                     .padding(vertical = 32.dp, horizontal = 24.dp)
             ) {
                 Column(
@@ -138,7 +140,7 @@ private fun HelloWorldDialogItem() {
                     val glowShadow = Shadow(
                         color = Color.White.copy(alpha = 0.8f),
                         offset = Offset.Zero,
-                        blurRadius = 18f
+                        blurRadius = waveMotion.glowRadius
                     )
                     // 波間に浮かぶ光を表現するテキスト装飾
                     Text(
@@ -177,26 +179,7 @@ private fun HelloWorldDialogItem() {
 }
 
 // ダイアログの背景を幻想的なグラデーションにするための拡張関数
-@Composable
-private fun Modifier.glowingDialogBackground(): Modifier {
-    // 波が押し寄せるような動きを表現するアニメーション値を用意
-    val infiniteTransition = rememberInfiniteTransition(label = "wave")
-    val waveShift by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = keyframes {
-                // 波が押し寄せて上昇する区間は短く速く、引き波で下降する区間は長くゆったりにする
-                durationMillis = 7600
-                0f at 0 using FastOutLinearInEasing
-                1f at 2800 using FastOutLinearInEasing
-                0f at durationMillis using LinearOutSlowInEasing
-            },
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "waveShift"
-    )
-
+private fun Modifier.glowingDialogBackground(waveMotion: WaveMotion): Modifier {
     val shape = RoundedCornerShape(28.dp)
     return this
         .clip(shape)
@@ -205,7 +188,7 @@ private fun Modifier.glowingDialogBackground(): Modifier {
             onDrawBehind {
                 // 波のトップが上下に揺れながら光るイメージの縦グラデーション
                 val verticalSpan = size.height * 1.6f
-                val startY = (0.5f - waveShift) * size.height
+                val startY = (0.5f - waveMotion.shift) * size.height
                 val brush = Brush.verticalGradient(
                     colors = listOf(
                         Color(0xFF000000),
@@ -224,4 +207,47 @@ private fun Modifier.glowingDialogBackground(): Modifier {
             color = Color.White.copy(alpha = 0.35f),
             shape = shape
         )
+}
+
+// 波の動きと光彩の大きさを同期させるための状態ホルダー
+private data class WaveMotion(
+    val shift: Float,
+    val glowRadius: Float,
+)
+
+@Composable
+private fun rememberWaveMotion(): WaveMotion {
+    // 波が押し寄せるような動きと光の広がりを同じタイムラインで制御する
+    val infiniteTransition = rememberInfiniteTransition(label = "wave")
+    val waveShift by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = keyframes {
+                // 波が押し寄せて上昇する区間は短く速く、引き波で下降する区間は長くゆったりにする
+                durationMillis = 7600
+                0f at 0 using FastOutLinearInEasing
+                1f at 2800 using FastOutLinearInEasing
+                0f at durationMillis using LinearOutSlowInEasing
+            },
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "waveShift"
+    )
+    val glowRadius by infiniteTransition.animateFloat(
+        initialValue = 16f,
+        targetValue = 16f,
+        animationSpec = infiniteRepeatable(
+            animation = keyframes {
+                // 競り上がる瞬間に光が大きく広がり、引き波ではゆったりと収束する
+                durationMillis = 7600
+                16f at 0 using FastOutLinearInEasing
+                32f at 2200 using FastOutLinearInEasing
+                16f at durationMillis using LinearOutSlowInEasing
+            },
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "glowRadius"
+    )
+    return WaveMotion(shift = waveShift, glowRadius = glowRadius)
 }
