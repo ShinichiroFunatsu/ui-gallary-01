@@ -4,12 +4,13 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.keyframes
 import androidx.compose.animation.core.rememberInfiniteTransition
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.FastOutLinearInEasing
+import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -184,8 +185,14 @@ private fun Modifier.glowingDialogBackground(): Modifier {
         initialValue = 0f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 6000, easing = LinearEasing),
-            repeatMode = RepeatMode.Reverse
+            animation = keyframes {
+                // 打ち寄せる動きは速く、引き波はゆっくりにする
+                durationMillis = 7600
+                0f at 0 using FastOutLinearInEasing
+                1f at 2200 using FastOutLinearInEasing
+                0f at durationMillis using LinearOutSlowInEasing
+            },
+            repeatMode = RepeatMode.Restart
         ),
         label = "waveShift"
     )
