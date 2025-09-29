@@ -186,11 +186,11 @@ private fun Modifier.glowingDialogBackground(): Modifier {
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
             animation = keyframes {
-                // 打ち寄せる動きは速く、引き波はゆっくりにする
+                // 下から上へ迫り上がる時は素早く、海面に戻るときはゆっくりにする
                 durationMillis = 7600
-                0f at 0 using FastOutLinearInEasing
-                1f at 2200 using FastOutLinearInEasing
-                0f at durationMillis using LinearOutSlowInEasing
+                0f at 0 using LinearOutSlowInEasing
+                1f at 5400 using LinearOutSlowInEasing
+                0f at durationMillis using FastOutLinearInEasing
             },
             repeatMode = RepeatMode.Restart
         ),
