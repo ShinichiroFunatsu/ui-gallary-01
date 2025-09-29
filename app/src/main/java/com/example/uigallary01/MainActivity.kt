@@ -186,11 +186,11 @@ private fun Modifier.glowingDialogBackground(): Modifier {
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
             animation = keyframes {
-                // 下から上へ迫り上がる時は素早く、海面に戻るときはゆっくりにする
+                // 波が押し寄せて上昇する区間は短く速く、引き波で下降する区間は長くゆったりにする
                 durationMillis = 7600
-                0f at 0 using LinearOutSlowInEasing
-                1f at 5400 using LinearOutSlowInEasing
-                0f at durationMillis using FastOutLinearInEasing
+                0f at 0 using FastOutLinearInEasing
+                1f at 2800 using FastOutLinearInEasing
+                0f at durationMillis using LinearOutSlowInEasing
             },
             repeatMode = RepeatMode.Restart
         ),
@@ -205,7 +205,7 @@ private fun Modifier.glowingDialogBackground(): Modifier {
             onDrawBehind {
                 // 波のトップが上下に揺れながら光るイメージの縦グラデーション
                 val verticalSpan = size.height * 1.6f
-                val startY = (waveShift - 0.5f) * size.height
+                val startY = (0.5f - waveShift) * size.height
                 val brush = Brush.verticalGradient(
                     colors = listOf(
                         Color(0xFF000000),
