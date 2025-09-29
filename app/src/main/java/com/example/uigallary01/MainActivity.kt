@@ -137,11 +137,7 @@ private fun HelloWorldDialogItem() {
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    val glowShadow = Shadow(
-                        color = Color.White.copy(alpha = 0.8f),
-                        offset = Offset.Zero,
-                        blurRadius = waveMotion.glowRadius
-                    )
+                    val glowShadow = waveMotion.glowShadow()
                     // 波間に浮かぶ光を表現するテキスト装飾
                     Text(
                         text = "Hello World",
@@ -213,7 +209,17 @@ private fun Modifier.glowingDialogBackground(waveMotion: WaveMotion): Modifier {
 private data class WaveMotion(
     val shift: Float,
     val glowRadius: Float,
+    val glowIntensity: Float,
 )
+
+// 光彩強度をシャドウとして取り出すための拡張関数
+private fun WaveMotion.glowShadow(): Shadow {
+    return Shadow(
+        color = Color.White.copy(alpha = glowIntensity),
+        offset = Offset.Zero,
+        blurRadius = glowRadius
+    )
+}
 
 @Composable
 private fun rememberWaveMotion(): WaveMotion {
@@ -235,19 +241,38 @@ private fun rememberWaveMotion(): WaveMotion {
         label = "waveShift"
     )
     val glowRadius by infiniteTransition.animateFloat(
-        initialValue = 16f,
-        targetValue = 16f,
+        initialValue = 28f,
+        targetValue = 28f,
         animationSpec = infiniteRepeatable(
             animation = keyframes {
                 // 競り上がる瞬間に光が大きく広がり、引き波ではゆったりと収束する
                 durationMillis = 7600
-                16f at 0 using FastOutLinearInEasing
-                32f at 2200 using FastOutLinearInEasing
-                16f at durationMillis using LinearOutSlowInEasing
+                28f at 0 using FastOutLinearInEasing
+                64f at 2200 using FastOutLinearInEasing
+                28f at durationMillis using LinearOutSlowInEasing
             },
             repeatMode = RepeatMode.Restart
         ),
         label = "glowRadius"
     )
-    return WaveMotion(shift = waveShift, glowRadius = glowRadius)
+    val glowIntensity by infiniteTransition.animateFloat(
+        initialValue = 0.9f,
+        targetValue = 0.9f,
+        animationSpec = infiniteRepeatable(
+            animation = keyframes {
+                // 押し寄せる瞬間は眩しく、引き波で落ち着く光の強弱を付ける
+                durationMillis = 7600
+                0.9f at 0 using FastOutLinearInEasing
+                1f at 2200 using FastOutLinearInEasing
+                0.82f at durationMillis using LinearOutSlowInEasing
+            },
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "glowIntensity"
+    )
+    return WaveMotion(
+        shift = waveShift,
+        glowRadius = glowRadius,
+        glowIntensity = glowIntensity
+    )
 }
