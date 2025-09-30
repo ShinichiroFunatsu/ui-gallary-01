@@ -1,6 +1,7 @@
 package com.example.uigallary01
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.RepeatMode
@@ -68,7 +69,12 @@ fun MoodySnowBackgroundItem(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 24.dp, vertical = 32.dp),
-            verticalArrangement = Arrangement.SpaceBetween,
+            verticalArrangement = if (isExpanded) {
+                Arrangement.SpaceBetween
+            } else {
+                Arrangement.Bottom
+            },
+            showMessage = isExpanded,
         )
     }
 }
@@ -104,7 +110,8 @@ fun MoodySnowBackgroundFullScreen(
             }
             MoodySnowCopy(
                 modifier = Modifier.align(Alignment.BottomStart),
-                verticalArrangement = Arrangement.spacedBy(20.dp)
+                verticalArrangement = Arrangement.spacedBy(20.dp),
+                showMessage = true,
             )
         }
     }
@@ -173,6 +180,7 @@ private fun MoodySnowBackgroundSurface(
 private fun MoodySnowCopy(
     modifier: Modifier,
     verticalArrangement: Arrangement.Vertical,
+    showMessage: Boolean,
 ) {
     Column(
         modifier = modifier,
@@ -189,12 +197,15 @@ private fun MoodySnowCopy(
                 )
             )
         )
-        Text(
-            text = "静かに舞い落ちる雪に包まれた夜の空気を想像してください。",
-            style = MaterialTheme.typography.bodyMedium.copy(
-                color = Color(0xFFD9E4FF)
+        // 拡大時のみ説明文を表示して、閉じているときはタイトルだけにする
+        AnimatedVisibility(visible = showMessage) {
+            Text(
+                text = "静かに舞い落ちる雪に包まれた夜の空気を想像してください。",
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    color = Color(0xFFD9E4FF)
+                )
             )
-        )
+        }
     }
 }
 
