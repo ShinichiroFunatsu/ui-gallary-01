@@ -1,7 +1,11 @@
 package com.example.uigallary01
 
-import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -9,17 +13,29 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.lerp
+import androidx.compose.ui.util.lerp
 import com.example.uigallary01.ui.theme.UiGallary01Theme
 
 @Composable
@@ -28,39 +44,97 @@ fun GalleryScreen(modifier: Modifier = Modifier) {
     var isMoodySnowExpanded by rememberSaveable { mutableStateOf(false) }
     val moodySnowState = rememberMoodySnowBackgroundState()
 
-    // ギャラリーに表示する要素を定義
-    val galleryItems = listOf(
-        GalleryItem(
-            title = "Hello World Dialog",
-            content = { HelloWorldDialogItem() }
-        ),
-        GalleryItem(
-            title = "Moody Snow Background",
-            content = { MoodySnowBackgroundItem(state = moodySnowState) },
-            onClick = { isMoodySnowExpanded = true }
-        )
+    // リスト表示時のカード位置を記録して、拡大アニメーションの開始点に利用
+    var moodySnowCardBounds by remember { mutableStateOf<Rect?>(null) }
+    var animatedBounds by remember { mutableStateOf<Rect?>(null) }
+
+    val expansionProgress by animateFloatAsState(
+        targetValue = if (isMoodySnowExpanded) 1f else 0f,
+        animationSpec = tween(durationMillis = 520, easing = FastOutSlowInEasing),
+        label = "moodySnowExpansion",
+        finishedListener = { value ->
+            if (value == 0f) {
+                animatedBounds = null
+            }
+        }
     )
 
-    Crossfade(targetState = isMoodySnowExpanded, label = "galleryContent") { expanded ->
-        if (expanded) {
-            MoodySnowBackgroundFullScreen(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .then(modifier),
-                state = moodySnowState,
-                onDismiss = { isMoodySnowExpanded = false }
+    val galleryItems = remember {
+        listOf(
+            GalleryItem(
+                title = "Hello World Dialog",
+                content = { HelloWorldDialogItem() }
             )
-        } else {
-            LazyColumn(
+        )
+    }
+
+    BoxWithConstraints(
+        modifier = Modifier
+            .fillMaxSize()
+            .then(modifier)
+    ) {
+        val density = LocalDensity.current
+        val containerWidthPx = with(density) { maxWidth.toPx() }
+        val containerHeightPx = with(density) { maxHeight.toPx() }
+
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            items(galleryItems) { item ->
+                item.ListItem()
+            }
+
+            item {
+                GalleryItem(
+                    title = "Moody Snow Background",
+                    content = { MoodySnowBackgroundItem(state = moodySnowState) },
+                    onClick = {
+                        val bounds = requireNotNull(moodySnowCardBounds)
+                        animatedBounds = bounds
+                        isMoodySnowExpanded = true
+                    }
+                ).ListItem(
+                    modifier = Modifier.onGloballyPositioned { coordinates ->
+                        if (!isMoodySnowExpanded) {
+                            moodySnowCardBounds = coordinates.boundsInRoot()
+                        }
+                    }
+                )
+            }
+        }
+
+        val startBounds = animatedBounds
+        if (startBounds != null && (isMoodySnowExpanded || expansionProgress > 0f)) {
+            val startScaleX = startBounds.width / containerWidthPx
+            val startScaleY = startBounds.height / containerHeightPx
+            val currentScaleX = lerp(startScaleX, 1f, expansionProgress)
+            val currentScaleY = lerp(startScaleY, 1f, expansionProgress)
+            val currentTranslationX = lerp(startBounds.left, 0f, expansionProgress)
+            val currentTranslationY = lerp(startBounds.top, 0f, expansionProgress)
+            val currentCornerRadius: Dp = lerp(24.dp, 0.dp, expansionProgress)
+
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .then(modifier),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                    .graphicsLayer {
+                        transformOrigin = TransformOrigin(0f, 0f)
+                        scaleX = currentScaleX
+                        scaleY = currentScaleY
+                        translationX = currentTranslationX
+                        translationY = currentTranslationY
+                    }
+                    .clip(RoundedCornerShape(currentCornerRadius))
             ) {
-                items(galleryItems) { item ->
-                    item.ListItem()
-                }
+                MoodySnowBackgroundFullScreen(
+                    modifier = Modifier.fillMaxSize(),
+                    state = moodySnowState,
+                    onDismiss = {
+                        animatedBounds = moodySnowCardBounds
+                        isMoodySnowExpanded = false
+                    }
+                )
             }
         }
     }
