@@ -1,7 +1,7 @@
 # AGENTS.md (for Android)
 
-### Validation
-Run `./gradlew assembleFossDebug`.
+### Validation　(required before push)
+Run `./gradlew assembleDebug`.
 
 ## Linting
 - You may run `./gradlew lint` before submitting changes.
