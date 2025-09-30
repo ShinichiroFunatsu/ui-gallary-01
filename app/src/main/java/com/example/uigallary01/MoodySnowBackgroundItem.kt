@@ -1,5 +1,6 @@
 package com.example.uigallary01
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -9,6 +10,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -17,8 +19,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.Stable
+import androidx.compose.runtime.State
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -27,6 +31,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.lerp
 import kotlin.math.PI
@@ -34,10 +39,68 @@ import kotlin.math.sin
 import kotlin.random.Random
 
 @Composable
-fun MoodySnowBackgroundItem() {
-    // 雪が舞う背景の表現に必要な状態を初期化
+fun MoodySnowBackgroundItem(
+    modifier: Modifier = Modifier,
+    state: MoodySnowBackgroundState = rememberMoodySnowBackgroundState(),
+) {
+    MoodySnowBackgroundSurface(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(220.dp)
+            .clip(RoundedCornerShape(24.dp)),
+        state = state,
+    ) {
+        MoodySnowCopy(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 24.dp, vertical = 32.dp),
+            verticalArrangement = Arrangement.SpaceBetween,
+        )
+    }
+}
+
+@Composable
+fun MoodySnowBackgroundFullScreen(
+    modifier: Modifier = Modifier,
+    state: MoodySnowBackgroundState,
+    onDismiss: () -> Unit,
+) {
+    // システムの戻る操作でも一覧へ戻れるようにする
+    BackHandler(onBack = onDismiss)
+
+    MoodySnowBackgroundSurface(
+        modifier = modifier,
+        state = state,
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 32.dp, vertical = 48.dp)
+        ) {
+            TextButton(
+                onClick = onDismiss,
+                modifier = Modifier.align(Alignment.TopEnd)
+            ) {
+                Text(
+                    text = "閉じる",
+                    style = MaterialTheme.typography.titleSmall.copy(
+                        color = Color(0xFFEBF7FF)
+                    )
+                )
+            }
+            MoodySnowCopy(
+                modifier = Modifier.align(Alignment.BottomStart),
+                verticalArrangement = Arrangement.spacedBy(20.dp)
+            )
+        }
+    }
+}
+
+@Composable
+fun rememberMoodySnowBackgroundState(): MoodySnowBackgroundState {
+    // 雪が舞う背景の表現に必要な状態をまとめて保持
     val snowParticles = rememberSnowField(count = 160)
-    val snowProgress by rememberInfiniteTransition(label = "snowfall").animateFloat(
+    val snowProgress = rememberInfiniteTransition(label = "snowfall").animateFloat(
         initialValue = 0f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
@@ -56,49 +119,73 @@ fun MoodySnowBackgroundItem() {
         )
     }
 
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(220.dp)
-            .clip(RoundedCornerShape(24.dp))
-    ) {
+    return remember {
+        MoodySnowBackgroundState(
+            particles = snowParticles,
+            progress = snowProgress,
+            backgroundBrush = backgroundBrush,
+        )
+    }
+}
+
+@Stable
+class MoodySnowBackgroundState internal constructor(
+    internal val particles: List<SnowParticle>,
+    internal val progress: State<Float>,
+    internal val backgroundBrush: Brush,
+)
+
+@Composable
+private fun MoodySnowBackgroundSurface(
+    modifier: Modifier,
+    state: MoodySnowBackgroundState,
+    overlay: @Composable BoxScope.() -> Unit,
+) {
+    Box(modifier = modifier) {
         Canvas(modifier = Modifier.matchParentSize()) {
             // 夜空のグラデーションを先に描画
-            drawRect(brush = backgroundBrush)
+            drawRect(brush = state.backgroundBrush)
             // しんしんと降る雪の層を重ねる
             drawSnowField(
-                particles = snowParticles,
-                progress = snowProgress,
+                particles = state.particles,
+                progress = state.progress.value,
             )
         }
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 24.dp, vertical = 32.dp),
-            verticalArrangement = Arrangement.SpaceBetween
-        ) {
-            Text(
-                text = "Moody Snowfall",
-                style = MaterialTheme.typography.headlineSmall.copy(
-                    color = Color(0xFFEBF7FF),
-                    shadow = Shadow(
-                        color = Color.Black.copy(alpha = 0.6f),
-                        blurRadius = 12f,
-                    )
+        overlay()
+    }
+}
+
+@Composable
+private fun MoodySnowCopy(
+    modifier: Modifier,
+    verticalArrangement: Arrangement.Vertical,
+) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = verticalArrangement,
+        horizontalAlignment = Alignment.Start
+    ) {
+        Text(
+            text = "Moody Snowfall",
+            style = MaterialTheme.typography.headlineSmall.copy(
+                color = Color(0xFFEBF7FF),
+                shadow = Shadow(
+                    color = Color.Black.copy(alpha = 0.6f),
+                    blurRadius = 12f,
                 )
             )
-            Text(
-                text = "静かに舞い落ちる雪に包まれた夜の空気を想像してください。",
-                style = MaterialTheme.typography.bodyMedium.copy(
-                    color = Color(0xFFD9E4FF)
-                )
+        )
+        Text(
+            text = "静かに舞い落ちる雪に包まれた夜の空気を想像してください。",
+            style = MaterialTheme.typography.bodyMedium.copy(
+                color = Color(0xFFD9E4FF)
             )
-        }
+        )
     }
 }
 
 // 静かな雪の粒を表現するための情報をまとめたデータクラス
-private data class SnowParticle(
+internal data class SnowParticle(
     val horizontalPosition: Float,
     val verticalOrigin: Float,
     val speedMultiplier: Float,
