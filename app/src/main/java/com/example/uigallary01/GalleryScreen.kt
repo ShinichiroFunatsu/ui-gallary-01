@@ -1,6 +1,5 @@
 package com.example.uigallary01
 
-import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -13,10 +12,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -24,8 +19,6 @@ import com.example.uigallary01.ui.theme.UiGallary01Theme
 
 @Composable
 fun GalleryScreen(modifier: Modifier = Modifier) {
-    // Moody Snow をフルスクリーン表示するかどうかを保持
-    var isMoodySnowExpanded by rememberSaveable { mutableStateOf(false) }
     val moodySnowState = rememberMoodySnowBackgroundState()
 
     // ギャラリーに表示する要素を定義
@@ -37,31 +30,18 @@ fun GalleryScreen(modifier: Modifier = Modifier) {
         GalleryItem(
             title = "Moody Snow Background",
             content = { MoodySnowBackgroundItem(state = moodySnowState) },
-            onClick = { isMoodySnowExpanded = true }
         )
     )
 
-    Crossfade(targetState = isMoodySnowExpanded, label = "galleryContent") { expanded ->
-        if (expanded) {
-            MoodySnowBackgroundFullScreen(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .then(modifier),
-                state = moodySnowState,
-                onDismiss = { isMoodySnowExpanded = false }
-            )
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .then(modifier),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(galleryItems) { item ->
-                    item.ListItem()
-                }
-            }
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .then(modifier),
+        contentPadding = PaddingValues(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        items(galleryItems) { item ->
+            item.ListItem()
         }
     }
 }
