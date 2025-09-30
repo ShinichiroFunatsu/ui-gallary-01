@@ -1,7 +1,7 @@
 package com.example.uigallary01
 
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -10,7 +10,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredHeight
+import androidx.compose.foundation.layout.requiredWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -25,8 +28,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Rect
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -34,8 +35,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.lerp
-import androidx.compose.ui.util.lerp
 import com.example.uigallary01.ui.theme.UiGallary01Theme
 
 @Composable
@@ -47,17 +46,6 @@ fun GalleryScreen(modifier: Modifier = Modifier) {
     // リスト表示時のカード位置を記録して、拡大アニメーションの開始点に利用
     var moodySnowCardBounds by remember { mutableStateOf<Rect?>(null) }
     var animatedBounds by remember { mutableStateOf<Rect?>(null) }
-
-    val expansionProgress by animateFloatAsState(
-        targetValue = if (isMoodySnowExpanded) 1f else 0f,
-        animationSpec = tween(durationMillis = 520, easing = FastOutSlowInEasing),
-        label = "moodySnowExpansion",
-        finishedListener = { value ->
-            if (value == 0f) {
-                animatedBounds = null
-            }
-        }
-    )
 
     val galleryItems = remember {
         listOf(
@@ -74,8 +62,6 @@ fun GalleryScreen(modifier: Modifier = Modifier) {
             .then(modifier)
     ) {
         val density = LocalDensity.current
-        val containerWidthPx = with(density) { maxWidth.toPx() }
-        val containerHeightPx = with(density) { maxHeight.toPx() }
 
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
@@ -106,35 +92,68 @@ fun GalleryScreen(modifier: Modifier = Modifier) {
         }
 
         val startBounds = animatedBounds
-        if (startBounds != null && (isMoodySnowExpanded || expansionProgress > 0f)) {
-            val startScaleX = startBounds.width / containerWidthPx
-            val startScaleY = startBounds.height / containerHeightPx
-            val currentScaleX = lerp(startScaleX, 1f, expansionProgress)
-            val currentScaleY = lerp(startScaleY, 1f, expansionProgress)
-            val currentTranslationX = lerp(startBounds.left, 0f, expansionProgress)
-            val currentTranslationY = lerp(startBounds.top, 0f, expansionProgress)
-            val currentCornerRadius: Dp = lerp(24.dp, 0.dp, expansionProgress)
+        if (startBounds != null || isMoodySnowExpanded) {
+            val activeBounds = startBounds ?: moodySnowCardBounds
+            if (activeBounds != null) {
+                val startWidth = with(density) { activeBounds.width.toDp() }
+                val startHeight = with(density) { activeBounds.height.toDp() }
+                val startLeft = with(density) { activeBounds.left.toDp() }
+                val startTop = with(density) { activeBounds.top.toDp() }
 
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .graphicsLayer {
-                        transformOrigin = TransformOrigin(0f, 0f)
-                        scaleX = currentScaleX
-                        scaleY = currentScaleY
-                        translationX = currentTranslationX
-                        translationY = currentTranslationY
-                    }
-                    .clip(RoundedCornerShape(currentCornerRadius))
-            ) {
-                MoodySnowBackgroundFullScreen(
-                    modifier = Modifier.fillMaxSize(),
-                    state = moodySnowState,
-                    onDismiss = {
-                        animatedBounds = moodySnowCardBounds
-                        isMoodySnowExpanded = false
+                val overlayAnimationSpec = tween<Dp>(durationMillis = 520, easing = FastOutSlowInEasing)
+
+                val animatedWidth by animateDpAsState(
+                    targetValue = if (isMoodySnowExpanded) maxWidth else startWidth,
+                    animationSpec = overlayAnimationSpec,
+                    label = "moodySnowWidth",
+                    finishedListener = { value ->
+                        if (!isMoodySnowExpanded && value == startWidth) {
+                            animatedBounds = null
+                        }
                     }
                 )
+                val animatedHeight by animateDpAsState(
+                    targetValue = if (isMoodySnowExpanded) maxHeight else startHeight,
+                    animationSpec = overlayAnimationSpec,
+                    label = "moodySnowHeight"
+                )
+                val animatedOffsetX by animateDpAsState(
+                    targetValue = if (isMoodySnowExpanded) 0.dp else startLeft,
+                    animationSpec = overlayAnimationSpec,
+                    label = "moodySnowOffsetX"
+                )
+                val animatedOffsetY by animateDpAsState(
+                    targetValue = if (isMoodySnowExpanded) 0.dp else startTop,
+                    animationSpec = overlayAnimationSpec,
+                    label = "moodySnowOffsetY"
+                )
+                val animatedCornerRadius by animateDpAsState(
+                    targetValue = if (isMoodySnowExpanded) 0.dp else 24.dp,
+                    animationSpec = overlayAnimationSpec,
+                    label = "moodySnowCornerRadius"
+                )
+
+                Box(modifier = Modifier.fillMaxSize()) {
+                    Box(
+                        modifier = Modifier
+                            .offset(x = animatedOffsetX, y = animatedOffsetY)
+                            .requiredWidth(animatedWidth)
+                            .requiredHeight(animatedHeight)
+                            .graphicsLayer {
+                                clip = true
+                                shape = RoundedCornerShape(animatedCornerRadius)
+                            }
+                    ) {
+                        MoodySnowBackgroundFullScreen(
+                            modifier = Modifier.fillMaxSize(),
+                            state = moodySnowState,
+                            onDismiss = {
+                                animatedBounds = moodySnowCardBounds
+                                isMoodySnowExpanded = false
+                            }
+                        )
+                    }
+                }
             }
         }
     }
