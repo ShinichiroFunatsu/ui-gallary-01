@@ -1,17 +1,19 @@
 package com.example.uigallary01
 
-import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -19,11 +21,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.Stable
 import androidx.compose.runtime.State
+import androidx.compose.runtime.Stable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
@@ -31,7 +39,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.lerp
 import kotlin.math.PI
@@ -43,56 +51,29 @@ fun MoodySnowBackgroundItem(
     modifier: Modifier = Modifier,
     state: MoodySnowBackgroundState = rememberMoodySnowBackgroundState(),
 ) {
+    // タップごとにサイズを切り替える状態を保持
+    var isExpanded by rememberSaveable { mutableStateOf(false) }
+    val animatedHeight by animateDpAsState(
+        targetValue = if (isExpanded) 360.dp else 160.dp,
+        label = "snowItemHeight"
+    )
+
     MoodySnowBackgroundSurface(
         modifier = modifier
             .fillMaxWidth()
-            .height(220.dp)
-            .clip(RoundedCornerShape(24.dp)),
+            .height(animatedHeight)
+            .clip(RoundedCornerShape(24.dp))
+            .clickable { isExpanded = !isExpanded },
         state = state,
     ) {
         MoodySnowCopy(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 24.dp, vertical = 32.dp),
-            verticalArrangement = Arrangement.SpaceBetween,
+            verticalArrangement = Arrangement.Bottom,
+            showMessage = isExpanded,
+            messageSpacing = 16.dp,
         )
-    }
-}
-
-@Composable
-fun MoodySnowBackgroundFullScreen(
-    modifier: Modifier = Modifier,
-    state: MoodySnowBackgroundState,
-    onDismiss: () -> Unit,
-) {
-    // システムの戻る操作でも一覧へ戻れるようにする
-    BackHandler(onBack = onDismiss)
-
-    MoodySnowBackgroundSurface(
-        modifier = modifier,
-        state = state,
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 32.dp, vertical = 48.dp)
-        ) {
-            TextButton(
-                onClick = onDismiss,
-                modifier = Modifier.align(Alignment.TopEnd)
-            ) {
-                Text(
-                    text = "閉じる",
-                    style = MaterialTheme.typography.titleSmall.copy(
-                        color = Color(0xFFEBF7FF)
-                    )
-                )
-            }
-            MoodySnowCopy(
-                modifier = Modifier.align(Alignment.BottomStart),
-                verticalArrangement = Arrangement.spacedBy(20.dp)
-            )
-        }
     }
 }
 
@@ -100,7 +81,7 @@ fun MoodySnowBackgroundFullScreen(
 fun rememberMoodySnowBackgroundState(): MoodySnowBackgroundState {
     // 雪が舞う背景の表現に必要な状態をまとめて保持
     val snowParticles = rememberSnowField(count = 160)
-    val snowProgress = rememberInfiniteTransition(label = "snowfall").animateFloat(
+    val snowProgressLoop = rememberInfiniteTransition(label = "snowfall").animateFloat(
         initialValue = 0f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
@@ -109,6 +90,7 @@ fun rememberMoodySnowBackgroundState(): MoodySnowBackgroundState {
         ),
         label = "snowProgress",
     )
+    val snowProgress = snowProgressLoop.rememberContinuousProgress()
     val backgroundBrush = remember {
         Brush.verticalGradient(
             colors = listOf(
@@ -139,7 +121,7 @@ class MoodySnowBackgroundState internal constructor(
 private fun MoodySnowBackgroundSurface(
     modifier: Modifier,
     state: MoodySnowBackgroundState,
-    overlay: @Composable BoxScope.() -> Unit,
+    overlay: @Composable () -> Unit,
 ) {
     Box(modifier = modifier) {
         Canvas(modifier = Modifier.matchParentSize()) {
@@ -159,12 +141,26 @@ private fun MoodySnowBackgroundSurface(
 private fun MoodySnowCopy(
     modifier: Modifier,
     verticalArrangement: Arrangement.Vertical,
+    showMessage: Boolean,
+    messageSpacing: Dp = 0.dp,
 ) {
     Column(
         modifier = modifier,
         verticalArrangement = verticalArrangement,
         horizontalAlignment = Alignment.Start
     ) {
+        // タイトルの位置を保ったまま説明文を加える
+        AnimatedVisibility(visible = showMessage) {
+            Column {
+                Text(
+                    text = "静かに舞い落ちる雪に包まれた夜の空気を想像してください。",
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        color = Color(0xFFD9E4FF)
+                    )
+                )
+                Spacer(modifier = Modifier.height(messageSpacing))
+            }
+        }
         Text(
             text = "Moody Snowfall",
             style = MaterialTheme.typography.headlineSmall.copy(
@@ -173,12 +169,6 @@ private fun MoodySnowCopy(
                     color = Color.Black.copy(alpha = 0.6f),
                     blurRadius = 12f,
                 )
-            )
-        )
-        Text(
-            text = "静かに舞い落ちる雪に包まれた夜の空気を想像してください。",
-            style = MaterialTheme.typography.bodyMedium.copy(
-                color = Color(0xFFD9E4FF)
             )
         )
     }
@@ -233,3 +223,24 @@ private fun DrawScope.drawSnowField(
 }
 
 private const val TwoPi: Float = (PI * 2.0).toFloat()
+
+@Composable
+private fun State<Float>.rememberContinuousProgress(): State<Float> {
+    // 進行度がループするたびに累積値へ変換して雪の動きを途切れさせない
+    val totalProgress = remember { mutableFloatStateOf(value) }
+    val previousProgress = remember { mutableFloatStateOf(value) }
+
+    LaunchedEffect(value) {
+        val current = value
+        val last = previousProgress.floatValue
+        val delta = if (current < last) {
+            (1f - last) + current
+        } else {
+            current - last
+        }
+        totalProgress.floatValue += delta
+        previousProgress.floatValue = current
+    }
+
+    return totalProgress
+}
