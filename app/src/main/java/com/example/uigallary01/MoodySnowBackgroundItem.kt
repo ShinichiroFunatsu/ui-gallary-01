@@ -1,6 +1,5 @@
 package com.example.uigallary01
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.animateDpAsState
@@ -13,7 +12,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -23,7 +21,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.Stable
@@ -34,6 +31,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
@@ -41,7 +39,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.lerp
@@ -77,44 +74,6 @@ fun MoodySnowBackgroundItem(
             showMessage = isExpanded,
             messageSpacing = 16.dp,
         )
-    }
-}
-
-@Composable
-fun MoodySnowBackgroundFullScreen(
-    modifier: Modifier = Modifier,
-    state: MoodySnowBackgroundState,
-    onDismiss: () -> Unit,
-) {
-    // システムの戻る操作でも一覧へ戻れるようにする
-    BackHandler(onBack = onDismiss)
-
-    MoodySnowBackgroundSurface(
-        modifier = modifier,
-        state = state,
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 32.dp, vertical = 48.dp)
-        ) {
-            TextButton(
-                onClick = onDismiss,
-                modifier = Modifier.align(Alignment.TopEnd)
-            ) {
-                Text(
-                    text = "閉じる",
-                    style = MaterialTheme.typography.titleSmall.copy(
-                        color = Color(0xFFEBF7FF)
-                    )
-                )
-            }
-            MoodySnowCopy(
-                modifier = Modifier.align(Alignment.BottomStart),
-                verticalArrangement = Arrangement.spacedBy(20.dp),
-                showMessage = true,
-            )
-        }
     }
 }
 
@@ -162,7 +121,7 @@ class MoodySnowBackgroundState internal constructor(
 private fun MoodySnowBackgroundSurface(
     modifier: Modifier,
     state: MoodySnowBackgroundState,
-    overlay: @Composable BoxScope.() -> Unit,
+    overlay: @Composable () -> Unit,
 ) {
     Box(modifier = modifier) {
         Canvas(modifier = Modifier.matchParentSize()) {

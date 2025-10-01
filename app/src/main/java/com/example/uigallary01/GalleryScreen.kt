@@ -58,14 +58,12 @@ private fun GalleryScreenPreview() {
 private data class GalleryItem(
     val title: String,
     val content: @Composable () -> Unit,
-    val onClick: (() -> Unit)? = null,
 )
 
 // データクラス自身が描画手段を提供できるように拡張関数化
 @Composable
 private fun GalleryItem.ListItem(
     modifier: Modifier = Modifier,
-    onClick: (() -> Unit)? = this.onClick,
 ) {
     val cardContent: @Composable () -> Unit = {
         Column(
@@ -80,13 +78,7 @@ private fun GalleryItem.ListItem(
         }
     }
 
-    if (onClick != null) {
-        Card(onClick = onClick, modifier = modifier.fillMaxWidth()) {
-            cardContent()
-        }
-    } else {
-        Card(modifier = modifier.fillMaxWidth()) {
-            cardContent()
-        }
+    Card(modifier = modifier.fillMaxWidth()) {
+        cardContent()
     }
 }
