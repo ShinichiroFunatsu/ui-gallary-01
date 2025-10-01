@@ -33,6 +33,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.Shadow
 import com.example.uigallary01.ui.theme.UiGallary01Theme
 
 @Composable
@@ -54,12 +55,14 @@ fun DigitalRainBackgroundItem(
             .height(animatedHeight)
             .clip(RoundedCornerShape(24.dp))
             .clipToBounds()
-            .viewportHeight(fullHeight = expandedHeight, visibleHeight = animatedHeight)
             .background(Color.Black)
             .clickable { isExpanded = !isExpanded }
     ) {
         DigitalRainBackground(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .clipToBounds()
+                .viewportHeight(fullHeight = expandedHeight, visibleHeight = animatedHeight),
             version = GlyphVersion.Resurrections,
             backgroundColor = Color.Black,
         )
@@ -90,7 +93,7 @@ private fun DigitalRainCopy(
         AnimatedVisibility(visible = showMessage) {
             Column {
                 Text(
-                    text = "流れ続ける緑のコードをイルミネーションとして敷き詰めています。",
+                    text = "静かな闇に降り注ぐ緑のコードに包まれる情景を思い描いてください。",
                     style = MaterialTheme.typography.bodyMedium.copy(
                         color = Color(0xFFB4FFB4)
                     )
@@ -101,7 +104,11 @@ private fun DigitalRainCopy(
         Text(
             text = "Digital Rain",
             style = MaterialTheme.typography.headlineSmall.copy(
-                color = Color(0xFF90FF90)
+                color = Color(0xFF90FF90),
+                shadow = Shadow(
+                    color = Color.Black.copy(alpha = 0.65f),
+                    blurRadius = 12f,
+                )
             )
         )
     }
