@@ -57,7 +57,7 @@ fun MoodySnowBackgroundItem(
     // タップごとにサイズを切り替える状態を保持
     var isExpanded by rememberSaveable { mutableStateOf(false) }
     val animatedHeight by animateDpAsState(
-        targetValue = if (isExpanded) 360.dp else 220.dp,
+        targetValue = if (isExpanded) 360.dp else 160.dp,
         label = "snowItemHeight"
     )
 
