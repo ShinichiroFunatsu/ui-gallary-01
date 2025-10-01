@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -40,53 +41,68 @@ fun DigitalRainBackgroundItem(
 ) {
     // タップで高さを切り替えるアニメーションを保持
     var isExpanded by rememberSaveable { mutableStateOf(false) }
-    val collapsedHeight = 200.dp
+    val collapsedHeight = 160.dp
     val expandedHeight = 360.dp
     val animatedHeight by animateDpAsState(
         targetValue = if (isExpanded) expandedHeight else collapsedHeight,
         label = "digitalRainHeight"
     )
 
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(animatedHeight)
+            .clip(RoundedCornerShape(24.dp))
+            .clipToBounds()
+            .viewportHeight(fullHeight = expandedHeight, visibleHeight = animatedHeight)
+            .background(Color.Black)
+            .clickable { isExpanded = !isExpanded }
+    ) {
+        DigitalRainBackground(
+            modifier = Modifier.fillMaxSize(),
+            version = GlyphVersion.Resurrections,
+            backgroundColor = Color.Black,
+        )
+        DigitalRainCopy(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 24.dp, vertical = 32.dp),
+            verticalArrangement = Arrangement.Bottom,
+            showMessage = isExpanded,
+            messageSpacing = 16.dp,
+        )
+    }
+}
+
+@Composable
+private fun DigitalRainCopy(
+    modifier: Modifier,
+    verticalArrangement: Arrangement.Vertical,
+    showMessage: Boolean,
+    messageSpacing: Dp = 0.dp,
+) {
     Column(
         modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = verticalArrangement,
+        horizontalAlignment = Alignment.Start,
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(animatedHeight)
-                .clip(RoundedCornerShape(20.dp))
-                .clipToBounds()
-                .viewportHeight(fullHeight = expandedHeight, visibleHeight = animatedHeight)
-                .background(Color.Black)
-                .clickable { isExpanded = !isExpanded }
-        ) {
-            DigitalRainBackground(
-                modifier = Modifier.fillMaxSize(),
-                version = GlyphVersion.Resurrections,
-                backgroundColor = Color.Black,
-            )
-            Column(
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                AnimatedVisibility(visible = isExpanded) {
-                    Text(
-                        text = "輝度波だけで構成したイルミネーションモードです。",
-                        style = MaterialTheme.typography.bodyMedium.copy(color = Color(0xFFCCFFCC))
-                    )
-                }
+        // タイトルを所定の位置に保ったまま説明文を加える
+        AnimatedVisibility(visible = showMessage) {
+            Column {
                 Text(
-                    text = "Digital Rain Background",
-                    style = MaterialTheme.typography.bodyLarge.copy(color = Color.White)
+                    text = "流れ続ける緑のコードをイルミネーションとして敷き詰めています。",
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        color = Color(0xFFB4FFB4)
+                    )
                 )
+                Spacer(modifier = Modifier.height(messageSpacing))
             }
         }
         Text(
-            text = if (isExpanded) "タップでコンパクト表示に戻ります" else "タップで詳細を表示します",
-            style = MaterialTheme.typography.labelSmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
+            text = "Digital Rain",
+            style = MaterialTheme.typography.headlineSmall.copy(
+                color = Color(0xFF90FF90)
+            )
         )
     }
 }
