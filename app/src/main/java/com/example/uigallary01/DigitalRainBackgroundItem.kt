@@ -25,8 +25,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.example.uigallary01.ui.theme.UiGallary01Theme
 
@@ -36,8 +40,10 @@ fun DigitalRainBackgroundItem(
 ) {
     // タップで高さを切り替えるアニメーションを保持
     var isExpanded by rememberSaveable { mutableStateOf(false) }
+    val collapsedHeight = 200.dp
+    val expandedHeight = 360.dp
     val animatedHeight by animateDpAsState(
-        targetValue = if (isExpanded) 360.dp else 200.dp,
+        targetValue = if (isExpanded) expandedHeight else collapsedHeight,
         label = "digitalRainHeight"
     )
 
@@ -50,12 +56,14 @@ fun DigitalRainBackgroundItem(
                 .fillMaxWidth()
                 .height(animatedHeight)
                 .clip(RoundedCornerShape(20.dp))
+                .clipToBounds()
+                .viewportHeight(fullHeight = expandedHeight, visibleHeight = animatedHeight)
                 .background(Color.Black)
                 .clickable { isExpanded = !isExpanded }
         ) {
             DigitalRainBackground(
                 modifier = Modifier.fillMaxSize(),
-                version = if (isExpanded) GlyphVersion.Resurrections else GlyphVersion.Classic,
+                version = GlyphVersion.Resurrections,
                 backgroundColor = Color.Black,
             )
             Column(
@@ -80,6 +88,29 @@ fun DigitalRainBackgroundItem(
             text = if (isExpanded) "タップでコンパクト表示に戻ります" else "タップで詳細を表示します",
             style = MaterialTheme.typography.labelSmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
         )
+    }
+}
+
+// ViewPort の可視領域だけを変化させ、内部の描画サイズは最大値で固定する拡張関数
+private fun Modifier.viewportHeight(
+    fullHeight: Dp,
+    visibleHeight: Dp,
+): Modifier = layout { measurable, constraints ->
+    val fullHeightPx = fullHeight.roundToPx()
+    val placeable = measurable.measure(
+        Constraints(
+            minWidth = constraints.minWidth,
+            maxWidth = constraints.maxWidth,
+            minHeight = fullHeightPx,
+            maxHeight = fullHeightPx,
+        )
+    )
+    val visibleHeightPx = visibleHeight.roundToPx().coerceIn(
+        minimumValue = constraints.minHeight,
+        maximumValue = fullHeightPx,
+    )
+    layout(width = placeable.width, height = visibleHeightPx) {
+        placeable.placeRelative(0, 0)
     }
 }
 
