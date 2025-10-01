@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -39,6 +40,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.lerp
 import kotlin.math.PI
@@ -69,12 +71,9 @@ fun MoodySnowBackgroundItem(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 24.dp, vertical = 32.dp),
-            verticalArrangement = if (isExpanded) {
-                Arrangement.SpaceBetween
-            } else {
-                Arrangement.Bottom
-            },
+            verticalArrangement = Arrangement.Bottom,
             showMessage = isExpanded,
+            messageSpacing = 16.dp,
         )
     }
 }
@@ -181,12 +180,25 @@ private fun MoodySnowCopy(
     modifier: Modifier,
     verticalArrangement: Arrangement.Vertical,
     showMessage: Boolean,
+    messageSpacing: Dp = 0.dp,
 ) {
     Column(
         modifier = modifier,
         verticalArrangement = verticalArrangement,
         horizontalAlignment = Alignment.Start
     ) {
+        // タイトルの位置を保ったまま説明文を加える
+        AnimatedVisibility(visible = showMessage) {
+            Column {
+                Text(
+                    text = "静かに舞い落ちる雪に包まれた夜の空気を想像してください。",
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        color = Color(0xFFD9E4FF)
+                    )
+                )
+                Spacer(modifier = Modifier.height(messageSpacing))
+            }
+        }
         Text(
             text = "Moody Snowfall",
             style = MaterialTheme.typography.headlineSmall.copy(
@@ -197,15 +209,6 @@ private fun MoodySnowCopy(
                 )
             )
         )
-        // 拡大時のみ説明文を表示して、閉じているときはタイトルだけにする
-        AnimatedVisibility(visible = showMessage) {
-            Text(
-                text = "静かに舞い落ちる雪に包まれた夜の空気を想像してください。",
-                style = MaterialTheme.typography.bodyMedium.copy(
-                    color = Color(0xFFD9E4FF)
-                )
-            )
-        }
     }
 }
 
