@@ -2,20 +2,18 @@ package com.example.uigallary01
 
 import DigitalRainBackground
 import GlyphVersion
-import RainMode
-import WrapMode
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -36,9 +34,12 @@ import com.example.uigallary01.ui.theme.UiGallary01Theme
 fun DigitalRainBackgroundItem(
     modifier: Modifier = Modifier,
 ) {
-    // 表示モードの切り替え状態を保持
-    var mode by rememberSaveable { mutableStateOf(RainMode.Scroll) }
-    val glyphVersion = if (mode == RainMode.Scroll) GlyphVersion.Classic else GlyphVersion.Resurrections
+    // タップで高さを切り替えるアニメーションを保持
+    var isExpanded by rememberSaveable { mutableStateOf(false) }
+    val animatedHeight by animateDpAsState(
+        targetValue = if (isExpanded) 360.dp else 200.dp,
+        label = "digitalRainHeight"
+    )
 
     Column(
         modifier = modifier,
@@ -47,15 +48,14 @@ fun DigitalRainBackgroundItem(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(220.dp)
+                .height(animatedHeight)
                 .clip(RoundedCornerShape(20.dp))
                 .background(Color.Black)
+                .clickable { isExpanded = !isExpanded }
         ) {
             DigitalRainBackground(
                 modifier = Modifier.fillMaxSize(),
-                version = glyphVersion,
-                mode = mode,
-                wrapMode = WrapMode.Circular,
+                version = if (isExpanded) GlyphVersion.Resurrections else GlyphVersion.Classic,
                 backgroundColor = Color.Black,
             )
             Column(
@@ -64,50 +64,23 @@ fun DigitalRainBackgroundItem(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
+                AnimatedVisibility(visible = isExpanded) {
+                    Text(
+                        text = "輝度波だけで構成したイルミネーションモードです。",
+                        style = MaterialTheme.typography.bodyMedium.copy(color = Color(0xFFCCFFCC))
+                    )
+                }
                 Text(
-                    text = "Matrix風のレインを背景にした演出サンプル",
-                    style = MaterialTheme.typography.bodyMedium.copy(color = Color.White)
-                )
-                Text(
-                    text = "mode: ${mode.name}",
-                    style = MaterialTheme.typography.labelSmall.copy(color = Color(0xFFB0FFB0))
+                    text = "Digital Rain Background",
+                    style = MaterialTheme.typography.bodyLarge.copy(color = Color.White)
                 )
             }
         }
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            ModeAssistChip(
-                text = "Scroll",
-                selected = mode == RainMode.Scroll,
-                onClick = { mode = RainMode.Scroll }
-            )
-            ModeAssistChip(
-                text = "Illumination",
-                selected = mode == RainMode.Illumination,
-                onClick = { mode = RainMode.Illumination }
-            )
-        }
+        Text(
+            text = if (isExpanded) "タップでコンパクト表示に戻ります" else "タップで詳細を表示します",
+            style = MaterialTheme.typography.labelSmall.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
+        )
     }
-}
-
-@Composable
-private fun ModeAssistChip(
-    text: String,
-    selected: Boolean,
-    onClick: () -> Unit,
-) {
-    AssistChip(
-        onClick = onClick,
-        label = { Text(text) },
-        colors = AssistChipDefaults.assistChipColors(
-            containerColor = if (selected) Color(0xFF102B14) else MaterialTheme.colorScheme.surfaceVariant,
-            labelColor = if (selected) Color(0xFF00FF41) else MaterialTheme.colorScheme.onSurfaceVariant
-        ),
-        border = null
-    )
 }
 
 @Preview
