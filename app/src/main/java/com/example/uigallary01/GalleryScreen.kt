@@ -28,6 +28,10 @@ fun GalleryScreen(modifier: Modifier = Modifier) {
             content = { HelloWorldDialogItem() }
         ),
         GalleryItem(
+            title = "Digital Rain Background",
+            content = { DigitalRainBackgroundItem() }
+        ),
+        GalleryItem(
             title = "Moody Snow Background",
             content = { MoodySnowBackgroundItem(state = moodySnowState) },
         )
