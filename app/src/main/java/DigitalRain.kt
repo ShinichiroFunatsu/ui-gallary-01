@@ -4,7 +4,6 @@
  *
  * @param modifier 背景として敷くための修飾子
  * @param version グリフ循環順（Classic/Resurrections）の選択
- * @param mode 雨筋の挙動（スクロール / 輝度波）
  * @param columnWidthDp 列のピッチ（dp）
  * @param fontSizeSp フォントサイズ（sp）
  * @param baseColor テール基調色
@@ -14,16 +13,14 @@
  * @param minSpeedCps 列速度の下限（cells/sec）
  * @param maxSpeedCps 列速度の上限（cells/sec）
  * @param tailLengthCells 減衰テールのセル数
- * @param spawnChancePerSec Reset/Illumination 用のスポーン率
- * @param glyphMorphChancePerSec 文字モーフ頻度（両モード）
+ * @param spawnChancePerSec 輝度波の位相ゆらぎに使うスポーン率
+ * @param glyphMorphChancePerSec 文字モーフ頻度
  * @param jitterPx 文字描画位置の微小ジッター
- * @param wrapMode スクロール時の終端処理（Circular / Reset）
  * @param morphBias グリフ循環順で前方向へ寄せる比率（0..1）
  * @param seed 乱数シード（0 で現在時刻）
  * @param enabled アニメーション制御
  *
- * RainMode.Scroll は文字列自体が下方へ流れる映画的描画、RainMode.Illumination は列を固定したまま輝度波だけを送る静動表現。
- * WrapMode.Circular はリングバッファで循環し続け、WrapMode.Reset はテールまで抜けた列を一旦消してから再スポーンさせる。
+ * 輝度波のみを提供し、列を固定したまま光跡だけが下方向へ流れる描画を行う。
  * グリフ循環順は映画風の並びをハードコードし、next/prev 遷移でモーフを優先。含まれない文字はカテゴリ重み付き乱択へフォールバック。
  *
  * Portions adapted from ideas inspired by Rezmason/matrix (MIT).
@@ -39,7 +36,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
@@ -69,28 +65,22 @@ import kotlin.random.Random
 
 enum class GlyphVersion { Classic, Resurrections }
 
-enum class RainMode { Scroll, Illumination }
-
-enum class WrapMode { Circular, Reset }
-
 @Composable
 fun DigitalRainBackground(
     modifier: Modifier = Modifier,
     version: GlyphVersion = GlyphVersion.Classic,
-    mode: RainMode = RainMode.Scroll,
     columnWidthDp: Dp = 16.dp,
     fontSizeSp: TextUnit = 16.sp,
     baseColor: Color = Color(0xFF00FF41),
     backgroundColor: Color = Color(0xFF000000),
     headHighlightColor: Color = Color(0xFFE0FFE0),
     densityScale: Float = 1.0f,
-    minSpeedCps: Float = 12f,
-    maxSpeedCps: Float = 24f,
+    minSpeedCps: Float = 6f,
+    maxSpeedCps: Float = 12f,
     tailLengthCells: Int = 18,
     spawnChancePerSec: Float = 0.8f,
     glyphMorphChancePerSec: Float = 1.5f,
     jitterPx: Float = 0f,
-    wrapMode: WrapMode = WrapMode.Circular,
     morphBias: Float = 0.2f,
     seed: Long = 0L,
     enabled: Boolean = true
@@ -118,13 +108,10 @@ fun DigitalRainBackground(
 
     var canvasSize by remember { mutableStateOf(IntSize.Zero) }
 
-    val scrollState = remember { ScrollRainState() }
     val illuminationState = remember { IlluminationRainState() }
-
-    val latestMode by rememberUpdatedState(mode)
     val frameClock = remember { mutableLongStateOf(0L) }
 
-    LaunchedEffect(enabled, latestMode, glyphOrder, glyphPicker, resolvedSeed) {
+    LaunchedEffect(enabled, glyphOrder, glyphPicker, resolvedSeed) {
         if (!enabled) return@LaunchedEffect
         var previousTime = frameClock.longValue
         while (enabled) {
@@ -133,27 +120,14 @@ fun DigitalRainBackground(
                 previousTime = time
                 val spawnProbability = 1f - exp(-spawnChancePerSec * deltaSec)
                 val morphProbability = 1f - exp(-glyphMorphChancePerSec * deltaSec)
-                when (latestMode) {
-                    RainMode.Scroll -> scrollState.onFrame(
-                        time,
-                        deltaSec,
-                        spawnProbability,
-                        morphProbability,
-                        glyphOrder,
-                        glyphPicker,
-                        wrapMode,
-                        morphBias
-                    )
-                    RainMode.Illumination -> illuminationState.onFrame(
-                        time,
-                        deltaSec,
-                        spawnProbability,
-                        morphProbability,
-                        glyphOrder,
-                        glyphPicker,
-                        morphBias
-                    )
-                }
+                illuminationState.onFrame(
+                    deltaSec,
+                    spawnProbability,
+                    morphProbability,
+                    glyphOrder,
+                    glyphPicker,
+                    morphBias
+                )
                 frameClock.longValue = time
             }
         }
@@ -173,53 +147,26 @@ fun DigitalRainBackground(
         if (rowHeight <= 0f || cellWidthPx <= 0f) return@Canvas
         val columns = max(1, floor(size.width / cellWidthPx).toInt())
         val visibleRows = max(1, ceil(size.height / rowHeight).toInt())
-        when (mode) {
-            RainMode.Scroll -> {
-                scrollState.ensureLayout(
-                    columnCount = columns,
-                    visibleRows = visibleRows,
-                    tailLength = tailLengthCells,
-                    minSpeed = minSpeedCps,
-                    maxSpeed = maxSpeedCps,
-                    seed = resolvedSeed,
-                    glyphOrder = glyphOrder,
-                    glyphPicker = glyphPicker,
-                    wrapMode = wrapMode
-                )
-                scrollState.draw(
-                    scope = this,
-                    metrics = fontMetrics,
-                    glyphInspector = glyphInspector,
-                    glyphLayoutCache = glyphLayoutCache,
-                    cellWidthPx = cellWidthPx,
-                    baseColor = baseColor,
-                    headHighlightColor = headHighlightColor,
-                    jitterPx = jitterPx
-                )
-            }
-            RainMode.Illumination -> {
-                illuminationState.ensureLayout(
-                    columnCount = columns,
-                    visibleRows = visibleRows,
-                    tailLength = tailLengthCells,
-                    minSpeed = minSpeedCps,
-                    maxSpeed = maxSpeedCps,
-                    seed = resolvedSeed,
-                    glyphOrder = glyphOrder,
-                    glyphPicker = glyphPicker
-                )
-                illuminationState.draw(
-                    scope = this,
-                    metrics = fontMetrics,
-                    glyphInspector = glyphInspector,
-                    glyphLayoutCache = glyphLayoutCache,
-                    cellWidthPx = cellWidthPx,
-                    baseColor = baseColor,
-                    headHighlightColor = headHighlightColor,
-                    jitterPx = jitterPx
-                )
-            }
-        }
+        illuminationState.ensureLayout(
+            columnCount = columns,
+            visibleRows = visibleRows,
+            tailLength = tailLengthCells,
+            minSpeed = minSpeedCps,
+            maxSpeed = maxSpeedCps,
+            seed = resolvedSeed,
+            glyphOrder = glyphOrder,
+            glyphPicker = glyphPicker
+        )
+        illuminationState.draw(
+            scope = this,
+            metrics = fontMetrics,
+            glyphInspector = glyphInspector,
+            glyphLayoutCache = glyphLayoutCache,
+            cellWidthPx = cellWidthPx,
+            baseColor = baseColor,
+            headHighlightColor = headHighlightColor,
+            jitterPx = jitterPx
+        )
     }
 }
 
@@ -351,200 +298,6 @@ private class FontMetrics(textMeasurer: TextMeasurer, textStyle: TextStyle) {
     }
 }
 
-private data class Stream(
-    val column: Int,
-    var headRow: Float,
-    val speedCps: Float,
-    val tail: Int,
-    val rng: Random
-)
-
-private class ScrollColumn(
-    val stream: Stream,
-    val chars: CharArray,
-    val lastMorphNs: LongArray,
-    var active: Boolean
-)
-
-private class ScrollRainState {
-    private var columnCount: Int = 0
-    private var visibleRows: Int = 0
-    private var tailLength: Int = 0
-    private var bufferRows: Int = 0
-    private var minSpeed: Float = 0f
-    private var maxSpeed: Float = 0f
-    private var wrapMode: WrapMode = WrapMode.Circular
-    private var glyphOrderToken: GlyphOrder? = null
-    private var glyphPickerToken: GlyphPicker? = null
-    private val columns = mutableListOf<ScrollColumn>()
-
-    fun ensureLayout(
-        columnCount: Int,
-        visibleRows: Int,
-        tailLength: Int,
-        minSpeed: Float,
-        maxSpeed: Float,
-        seed: Long,
-        glyphOrder: GlyphOrder,
-        glyphPicker: GlyphPicker,
-        wrapMode: WrapMode
-    ) {
-        val needsRebuild = columnCount != this.columnCount ||
-            visibleRows != this.visibleRows ||
-            tailLength != this.tailLength ||
-            minSpeed != this.minSpeed ||
-            maxSpeed != this.maxSpeed ||
-            wrapMode != this.wrapMode ||
-            glyphOrder !== glyphOrderToken ||
-            glyphPicker !== glyphPickerToken
-        if (!needsRebuild) return
-        this.columnCount = columnCount
-        this.visibleRows = visibleRows
-        this.tailLength = tailLength
-        bufferRows = visibleRows + tailLength + 8
-        this.minSpeed = minSpeed
-        this.maxSpeed = maxSpeed
-        this.wrapMode = wrapMode
-        this.glyphOrderToken = glyphOrder
-        this.glyphPickerToken = glyphPicker
-        columns.clear()
-        for (column in 0 until columnCount) {
-            val rng = Random(seed + column)
-            val speed = minSpeed + (maxSpeed - minSpeed) * rng.nextFloat()
-            val initialHead = if (wrapMode == WrapMode.Reset) {
-                -rng.nextFloat() * (tailLength + 1)
-            } else {
-                rng.nextFloat() * (visibleRows + tailLength)
-            }
-            val stream = Stream(column, initialHead, speed, tailLength, rng)
-            val chars = CharArray(bufferRows)
-            val lastMorphNs = LongArray(bufferRows)
-            fillInitial(chars, rng, glyphOrder, glyphPicker)
-            columns.add(ScrollColumn(stream, chars, lastMorphNs, active = true))
-        }
-    }
-
-    fun onFrame(
-        timeNs: Long,
-        deltaSec: Float,
-        spawnProbability: Float,
-        morphProbability: Float,
-        glyphOrder: GlyphOrder,
-        glyphPicker: GlyphPicker,
-        wrapMode: WrapMode,
-        morphBias: Float
-    ) {
-        if (deltaSec <= 0f) return
-        val tail = tailLength
-        val visible = visibleRows
-        columns.forEach { column ->
-            val stream = column.stream
-            val rng = stream.rng
-            if (!column.active) {
-                if (wrapMode == WrapMode.Reset && rng.nextFloat() < spawnProbability) {
-                    stream.headRow = -tail.toFloat()
-                    fillInitial(column.chars, rng, glyphOrder, glyphPicker)
-                    column.active = true
-                }
-                return@forEach
-            }
-            val previousHead = stream.headRow
-            stream.headRow += stream.speedCps * deltaSec
-            val previousIndex = floor(previousHead).toInt()
-            val currentIndex = floor(stream.headRow).toInt()
-            if (currentIndex > previousIndex) {
-                var step = previousIndex + 1
-                while (step <= currentIndex) {
-                    val bufferIndex = step.modPositive(bufferRows)
-                    column.chars[bufferIndex] = glyphPicker.initialGlyph(rng, glyphOrder)
-                    column.lastMorphNs[bufferIndex] = timeNs
-                    step++
-                }
-            }
-            if (wrapMode == WrapMode.Reset && stream.headRow - tail > visible) {
-                column.active = false
-                return@forEach
-            }
-            if (morphProbability > 0f) {
-                val maxDepth = tail
-                var alphaStep = 0
-                while (alphaStep <= maxDepth) {
-                    val bufferIndex = (currentIndex - alphaStep).modPositive(bufferRows)
-                    if (rng.nextFloat() < morphProbability) {
-                        val currentChar = column.chars[bufferIndex]
-                        val nextChar = glyphPicker.morph(currentChar, rng, glyphOrder, morphBias)
-                        column.chars[bufferIndex] = nextChar
-                        column.lastMorphNs[bufferIndex] = timeNs
-                    }
-                    alphaStep++
-                }
-            }
-        }
-    }
-
-    fun draw(
-        scope: DrawScope,
-        metrics: FontMetrics,
-        glyphInspector: GlyphRenderInspector,
-        glyphLayoutCache: GlyphLayoutCache,
-        cellWidthPx: Float,
-        baseColor: Color,
-        headHighlightColor: Color,
-        jitterPx: Float
-    ) {
-        if (columnCount == 0) return
-        val ascent = metrics.ascent
-        val rowHeight = metrics.rowHeight
-        val visible = visibleRows
-        val buffer = bufferRows
-        columns.forEach { column ->
-            if (!column.active) return@forEach
-            val stream = column.stream
-            val rng = stream.rng
-            val baseIndex = floor(stream.headRow).toInt()
-            var alpha = 1f
-            val maxDepth = stream.tail + visible
-            var offset = 0
-            while (offset <= maxDepth) {
-                val row = baseIndex - offset
-                if (row in 0 until visible) {
-                    val charIndex = (baseIndex - offset).modPositive(buffer)
-                    val rawChar = column.chars[charIndex]
-                    val displayChar = glyphInspector.ensureRenderable(rawChar)
-                    val layout = glyphLayoutCache.layoutFor(displayChar)
-                    val color = if (offset <= 1) headHighlightColor else baseColor
-                    val jitterX = if (jitterPx == 0f) 0f else (rng.nextFloat() - 0.5f) * 2f * jitterPx
-                    val jitterY = if (jitterPx == 0f) 0f else (rng.nextFloat() - 0.5f) * 2f * jitterPx
-                    val topLeft = Offset(
-                        x = column.stream.column * cellWidthPx + jitterX,
-                        y = row * rowHeight - ascent + jitterY
-                    )
-                    scope.drawText(
-                        textLayoutResult = layout,
-                        color = color,
-                        topLeft = topLeft,
-                        alpha = alpha
-                    )
-                }
-                alpha *= 0.86f
-                if (alpha < 0.001f) break
-                offset++
-            }
-        }
-    }
-
-    private fun fillInitial(
-        chars: CharArray,
-        rng: Random,
-        glyphOrder: GlyphOrder,
-        glyphPicker: GlyphPicker
-    ) {
-        for (index in chars.indices) {
-            chars[index] = glyphPicker.initialGlyph(rng, glyphOrder)
-        }
-    }
-}
-
 private data class Illumination(
     val column: Int,
     var phase: Float,
@@ -555,8 +308,7 @@ private data class Illumination(
 
 private class IlluminationColumn(
     val illumination: Illumination,
-    val chars: CharArray,
-    val lastMorphNs: LongArray
+    val chars: CharArray
 )
 
 private class IlluminationRainState {
@@ -609,14 +361,12 @@ private class IlluminationRainState {
                 rng = rng
             )
             val chars = CharArray(ringRows)
-            val lastMorphNs = LongArray(ringRows)
             fillInitial(chars, rng, glyphOrder, glyphPicker)
-            columns.add(IlluminationColumn(illumination, chars, lastMorphNs))
+            columns.add(IlluminationColumn(illumination, chars))
         }
     }
 
     fun onFrame(
-        timeNs: Long,
         deltaSec: Float,
         spawnProbability: Float,
         morphProbability: Float,
@@ -642,8 +392,7 @@ private class IlluminationRainState {
                         val currentChar = column.chars[index]
                         val nextChar = glyphPicker.morph(currentChar, rng, glyphOrder, morphBias)
                         column.chars[index] = nextChar
-                        column.lastMorphNs[index] = timeNs
-                    }
+                }
                     index++
                 }
             }
@@ -716,26 +465,23 @@ private fun Int.modPositive(modulus: Int): Int {
     return if (result < 0) result + modulus else result
 }
 
-@Preview(name = "PreviewScroll")
+@Preview(name = "PreviewClassicIllumination")
 @Composable
-private fun PreviewDigitalRainScroll() {
+private fun PreviewDigitalRainClassicIllumination() {
     Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
         DigitalRainBackground(
             modifier = Modifier.fillMaxSize(),
-            mode = RainMode.Scroll,
-            wrapMode = WrapMode.Circular,
             version = GlyphVersion.Classic
         )
     }
 }
 
-@Preview(name = "PreviewIllumination")
+@Preview(name = "PreviewResurrectionsIllumination")
 @Composable
-private fun PreviewDigitalRainIllumination() {
+private fun PreviewDigitalRainResurrectionsIllumination() {
     Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
         DigitalRainBackground(
             modifier = Modifier.fillMaxSize(),
-            mode = RainMode.Illumination,
             version = GlyphVersion.Resurrections
         )
     }
