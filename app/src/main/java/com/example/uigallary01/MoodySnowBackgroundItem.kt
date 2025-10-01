@@ -25,9 +25,11 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.Stable
 import androidx.compose.runtime.State
+import androidx.compose.runtime.Stable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -120,7 +122,7 @@ fun MoodySnowBackgroundFullScreen(
 fun rememberMoodySnowBackgroundState(): MoodySnowBackgroundState {
     // 雪が舞う背景の表現に必要な状態をまとめて保持
     val snowParticles = rememberSnowField(count = 160)
-    val snowProgress = rememberInfiniteTransition(label = "snowfall").animateFloat(
+    val snowProgressLoop = rememberInfiniteTransition(label = "snowfall").animateFloat(
         initialValue = 0f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
@@ -129,6 +131,7 @@ fun rememberMoodySnowBackgroundState(): MoodySnowBackgroundState {
         ),
         label = "snowProgress",
     )
+    val snowProgress = snowProgressLoop.rememberContinuousProgress()
     val backgroundBrush = remember {
         Brush.verticalGradient(
             colors = listOf(
@@ -261,3 +264,24 @@ private fun DrawScope.drawSnowField(
 }
 
 private const val TwoPi: Float = (PI * 2.0).toFloat()
+
+@Composable
+private fun State<Float>.rememberContinuousProgress(): State<Float> {
+    // 進行度がループするたびに累積値へ変換して雪の動きを途切れさせない
+    val totalProgress = remember { mutableFloatStateOf(value) }
+    val previousProgress = remember { mutableFloatStateOf(value) }
+
+    LaunchedEffect(value) {
+        val current = value
+        val last = previousProgress.floatValue
+        val delta = if (current < last) {
+            (1f - last) + current
+        } else {
+            current - last
+        }
+        totalProgress.floatValue += delta
+        previousProgress.floatValue = current
+    }
+
+    return totalProgress
+}
