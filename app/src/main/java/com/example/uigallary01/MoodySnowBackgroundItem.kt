@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.Stable
@@ -152,24 +151,23 @@ private fun MoodySnowCopy(
         // タイトルの位置を保ったまま説明文を加える
         AnimatedVisibility(visible = showMessage) {
             Column {
-                Text(
+                ScrambleText(
                     text = "静寂に包まれた雪夜\nそこに佇むあなたは何を感じますか",
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        color = Color(0xFFD9E4FF)
-                    )
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color(0xFFD9E4FF),
                 )
                 Spacer(modifier = Modifier.height(messageSpacing))
             }
         }
-        Text(
+        ScrambleText(
             text = "Moody Snowfall",
             style = MaterialTheme.typography.headlineSmall.copy(
-                color = Color(0xFFEBF7FF),
                 shadow = Shadow(
                     color = Color.Black.copy(alpha = 0.6f),
                     blurRadius = 12f,
                 )
-            )
+            ),
+            color = Color(0xFFEBF7FF),
         )
     }
 }
