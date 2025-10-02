@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -92,24 +91,23 @@ private fun DigitalRainCopy(
         // タイトルを所定の位置に保ったまま説明文を加える
         AnimatedVisibility(visible = showMessage) {
             Column {
-                Text(
+                ScrambleText(
                     text = "その信号の一つひとつを感じ\nあたらしい世界へ踏み出す光景を想像して下さい",
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        color = Color(0xFFB4FFB4)
-                    )
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color(0xFFB4FFB4),
                 )
                 Spacer(modifier = Modifier.height(messageSpacing))
             }
         }
-        Text(
+        ScrambleText(
             text = "Digital Rain",
             style = MaterialTheme.typography.headlineSmall.copy(
-                color = Color(0xFF90FF90),
                 shadow = Shadow(
                     color = Color.Black.copy(alpha = 0.65f),
                     blurRadius = 12f,
                 )
-            )
+            ),
+            color = Color(0xFF90FF90),
         )
     }
 }
