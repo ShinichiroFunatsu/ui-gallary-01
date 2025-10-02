@@ -61,6 +61,7 @@ fun MoodySnowBackgroundItem(
         modifier = modifier
             .fillMaxWidth()
             .height(animatedHeight)
+            .ensureVisibleOnExpand(isExpanded)
             .clip(RoundedCornerShape(24.dp))
             .clickable { isExpanded = !isExpanded },
         state = state,

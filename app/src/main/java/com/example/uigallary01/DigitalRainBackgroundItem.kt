@@ -52,6 +52,7 @@ fun DigitalRainBackgroundItem(
         modifier = modifier
             .fillMaxWidth()
             .height(animatedHeight)
+            .ensureVisibleOnExpand(isExpanded)
             .clip(RoundedCornerShape(24.dp))
             .clipToBounds()
             .background(Color.Black)
