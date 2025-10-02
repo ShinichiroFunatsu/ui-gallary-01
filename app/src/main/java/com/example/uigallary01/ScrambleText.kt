@@ -26,6 +26,7 @@ fun ScrambleText(
     frameCount: Int = ScrambleTextDefaults.FrameCount,
     frameIntervalMillis: Long = ScrambleTextDefaults.FrameIntervalMillis,
     stableCharPredicate: (Char) -> Boolean = ScrambleTextDefaults.StableCharPredicate,
+    lineAnimationMode: ScrambleLineAnimationMode = ScrambleLineAnimationMode.Together,
 ) {
     // 利用側で不正な値が渡されないように契約を明示
     require(frameCount > 1) { "frameCount must be greater than 1." }
@@ -34,26 +35,67 @@ fun ScrambleText(
 
     var displayText by remember(playKey, text) { mutableStateOf(text) }
 
-    LaunchedEffect(playKey, text, frameCount, frameIntervalMillis, scrambleSeed, glyphs, stableCharPredicate) {
+    LaunchedEffect(
+        playKey,
+        text,
+        frameCount,
+        frameIntervalMillis,
+        scrambleSeed,
+        glyphs,
+        stableCharPredicate,
+        lineAnimationMode,
+    ) {
         val targetText = text
         if (targetText.isEmpty()) {
             displayText = targetText
             return@LaunchedEffect
         }
-        val random = Random(scrambleSeed)
-        for (frameIndex in 0 until frameCount - 1) {
-            val progress = frameIndex.toScrambleProgress(totalFrames = frameCount)
-            displayText = targetText.scrambledCopy(
-                progress = progress,
-                random = random,
-                glyphs = glyphs,
-                stableCharPredicate = stableCharPredicate,
-            )
-            if (frameIntervalMillis > 0L) {
-                delay(frameIntervalMillis)
+        val targetLines = targetText.toScrambleLines()
+        if (targetLines.isEmpty()) {
+            displayText = targetText
+            return@LaunchedEffect
+        }
+
+        when (lineAnimationMode) {
+            ScrambleLineAnimationMode.Together -> {
+                val random = Random(scrambleSeed)
+                for (frameIndex in 0 until frameCount - 1) {
+                    val progress = frameIndex.toScrambleProgress(totalFrames = frameCount)
+                    displayText = targetText.scrambledCopy(
+                        progress = progress,
+                        random = random,
+                        glyphs = glyphs,
+                        stableCharPredicate = stableCharPredicate,
+                    )
+                    if (frameIntervalMillis > 0L) {
+                        delay(frameIntervalMillis)
+                    }
+                }
+                displayText = targetText
+            }
+
+            ScrambleLineAnimationMode.Individually -> {
+                val lineRandoms = targetLines.mapIndexed { index, _ ->
+                    Random(scrambleSeed * 31 + index)
+                }
+                for (frameIndex in 0 until frameCount - 1) {
+                    val progress = frameIndex.toScrambleProgress(totalFrames = frameCount)
+                    val scrambledLines = targetLines.mapIndexed { index, line ->
+                        line.scrambledCopy(
+                            progress = progress,
+                            random = lineRandoms[index],
+                            glyphs = glyphs,
+                            stableCharPredicate = stableCharPredicate,
+                        )
+                    }
+                    displayText = scrambledLines.joinToMultilineText()
+                    if (frameIntervalMillis > 0L) {
+                        delay(frameIntervalMillis)
+                    }
+                }
+                displayText = targetLines.joinToMultilineText()
             }
         }
-        displayText = targetText
     }
 
     Text(
@@ -62,6 +104,11 @@ fun ScrambleText(
         style = style,
         color = color,
     )
+}
+
+enum class ScrambleLineAnimationMode {
+    Together,
+    Individually,
 }
 
 object ScrambleTextDefaults {
@@ -109,4 +156,17 @@ private fun String.scrambledCopy(
         builder.append(resolved)
     }
     return builder.toString()
+}
+
+// 元のテキストから行リストを生成する拡張関数
+private fun String.toScrambleLines(): List<String> {
+    if (isEmpty()) return emptyList()
+    return split('\n', ignoreCase = false, limit = -1).map { segment ->
+        if (segment.endsWith('\r')) segment.dropLast(1) else segment
+    }
+}
+
+// 行リストから複数行テキストへ変換する拡張関数
+private fun List<String>.joinToMultilineText(): String {
+    return joinToString(separator = "\n")
 }

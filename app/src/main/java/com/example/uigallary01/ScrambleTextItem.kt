@@ -29,7 +29,7 @@ fun ScrambleTextItem(
     modifier: Modifier = Modifier,
 ) {
     // ギャラリー表示用の文面を定義
-    val targetLines = ScrambleDemoLines
+    val targetText = ScrambleDemoText
     var playSeed by rememberSaveable { mutableIntStateOf(0) }
 
     Column(
@@ -42,15 +42,14 @@ fun ScrambleTextItem(
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             // 再生シードをキーにスクランブル表示を更新
-            targetLines.forEachIndexed { index, line ->
-                ScrambleText(
-                    text = line,
-                    playKey = playSeed to index,
-                    scrambleSeed = playSeed * 31 + index,
-                    style = MaterialTheme.typography.bodyLarge.copy(fontFamily = FontFamily.Monospace),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+            ScrambleText(
+                text = targetText,
+                playKey = playSeed,
+                scrambleSeed = playSeed,
+                lineAnimationMode = ScrambleLineAnimationMode.Individually,
+                style = MaterialTheme.typography.bodyLarge.copy(fontFamily = FontFamily.Monospace),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
         Spacer(modifier = Modifier.height(4.dp))
         Button(onClick = { playSeed++ }) {
@@ -64,6 +63,8 @@ private val ScrambleDemoLines = listOf(
     "Fragments align into a message.",
     "Embrace the moment decoding you.",
 )
+
+private val ScrambleDemoText = ScrambleDemoLines.joinToString(separator = "\n")
 
 @Preview
 @Composable
