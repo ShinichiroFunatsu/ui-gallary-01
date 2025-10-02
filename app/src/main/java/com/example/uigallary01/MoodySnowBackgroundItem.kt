@@ -153,7 +153,7 @@ private fun MoodySnowCopy(
         AnimatedVisibility(visible = showMessage) {
             Column {
                 Text(
-                    text = "静かに舞い落ちる雪に包まれた夜の空気を想像してください。",
+                    text = "静寂に包まれた雪夜\nそこに佇むあなたは何を感じますか",
                     style = MaterialTheme.typography.bodyMedium.copy(
                         color = Color(0xFFD9E4FF)
                     )

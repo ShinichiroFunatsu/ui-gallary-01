@@ -93,7 +93,7 @@ private fun DigitalRainCopy(
         AnimatedVisibility(visible = showMessage) {
             Column {
                 Text(
-                    text = "静かな闇に降り注ぐ緑のコードに包まれる情景を思い描いてください。",
+                    text = "その信号の一つひとつを感じ\nあたらしい世界へ踏み出す光景を想像して下さい",
                     style = MaterialTheme.typography.bodyMedium.copy(
                         color = Color(0xFFB4FFB4)
                     )
