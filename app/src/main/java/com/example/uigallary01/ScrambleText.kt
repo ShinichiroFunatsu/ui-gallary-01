@@ -161,9 +161,23 @@ private fun String.scrambledCopy(
 // 元のテキストから行リストを生成する拡張関数
 private fun String.toScrambleLines(): List<String> {
     if (isEmpty()) return emptyList()
-    return split('\n', ignoreCase = false, limit = -1).map { segment ->
-        if (segment.endsWith('\r')) segment.dropLast(1) else segment
+    val lines = mutableListOf<String>()
+    var lineStartIndex = 0
+    for (index in indices) {
+        if (this[index] == '\n') {
+            lines += substring(lineStartIndex, index).trimTrailingCarriageReturn()
+            lineStartIndex = index + 1
+        }
     }
+    if (lineStartIndex <= length) {
+        lines += substring(lineStartIndex, length).trimTrailingCarriageReturn()
+    }
+    return lines
+}
+
+// Windows系の改行で末尾に付く\rのみを除去する拡張関数
+private fun String.trimTrailingCarriageReturn(): String {
+    return if (endsWith('\r')) dropLast(1) else this
 }
 
 // 行リストから複数行テキストへ変換する拡張関数
