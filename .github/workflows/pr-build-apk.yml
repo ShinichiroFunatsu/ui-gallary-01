@@ -15,12 +15,17 @@ concurrency:
 permissions:
   contents: read
   pull-requests: write
+  pages: write
+  id-token: write
 
 jobs:
   assemble:
     name: Assemble Debug APK
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    outputs:
+      artifact-name: ${{ steps.artifact-metadata.outputs.artifact-name }}
+      run-url: ${{ steps.prepare-run-url.outputs.run-url }}
     env:
       ARTIFACT_NAME: pr-debug-apk-${{ github.run_id }}
       ORG_GRADLE_PROJECT_org.gradle.jvmargs: -Xmx2g -Dfile.encoding=UTF-8
@@ -47,7 +52,8 @@ jobs:
       - name: Android SDK をセットアップ
         uses: android-actions/setup-android@v3
         with:
-          packages: tools platform-tools platforms;android-34 build-tools;34.0.0
+          accept-android-sdk-licenses: true
+          packages: platforms;android-34 build-tools;34.0.0 platform-tools
 
       - name: Make gradlew executable
         run: chmod +x gradlew
@@ -64,7 +70,39 @@ jobs:
           retention-days: 14
 
       - name: Prepare run URL
-        run: echo "RUN_URL=https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" >> "$GITHUB_ENV"
+        id: prepare-run-url
+        run: |
+          echo "RUN_URL=https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" >> "$GITHUB_ENV"
+          echo "run-url=https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" >> "$GITHUB_OUTPUT"
+
+      - name: 出力メタデータを共有
+        id: artifact-metadata
+        run: echo "artifact-name=${ARTIFACT_NAME}" >> "$GITHUB_OUTPUT"
+
+      - name: Prepare files for Pages
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        run: |
+          PUB_DIR="public/pr-${{ github.event.pull_request.number || github.run_id }}"
+          mkdir -p "$PUB_DIR"
+          find . -path '*/build/outputs/apk/debug/*.apk' -type f -print -exec cp -v {} "$PUB_DIR"/ \;
+          PR_LABEL="${{ github.event.pull_request.number }}"
+          if [ -z "$PR_LABEL" ]; then
+            PR_LABEL="manual"
+          fi
+          {
+            echo '<!doctype html><meta charset="utf-8"><title>PR APK</title><h1>PR '"$PR_LABEL"' APK</h1><ul>'
+            for f in "$PUB_DIR"/*.apk; do
+              bn=$(basename "$f")
+              echo "<li><a href=\"./$bn\">$bn</a></li>"
+            done
+            echo '</ul>'
+          } > "$PUB_DIR/index.html"
+
+      - name: Upload Pages artifact
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
 
       - name: Find existing artifact comment
         if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
@@ -106,3 +144,41 @@ jobs:
         if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository
         run: |
           echo "Forked PR のためコメント投稿をスキップしました。Artifacts ページはこちら: $RUN_URL"
+
+  deploy-pages:
+    name: Deploy to GitHub Pages
+    needs: assemble
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    env:
+      ARTIFACT_NAME: ${{ needs.assemble.outputs['artifact-name'] }}
+      RUN_URL: ${{ needs.assemble.outputs['run-url'] }}
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Find existing APK comment
+        id: find-comment
+        uses: peter-evans/find-comment@v3
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-author: 'github-actions[bot]'
+          body-includes: '<!-- apk-artifact-link -->'
+
+      - name: Create / Update PR comment with Pages URL
+        uses: peter-evans/create-or-update-comment@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-id: ${{ steps.find-comment.outputs.comment-id }}
+          edit-mode: replace
+          body: |
+            <!-- apk-artifact-link -->
+            📱 Debug APK アーティファクト **${{ env.ARTIFACT_NAME }}** をアップロードしました。
+            Run: ${{ github.run_id }} / Artifact: ${{ env.ARTIFACT_NAME }}
+            - Actions Artifacts: [こちら](${{ env.RUN_URL }}#artifacts)
+            - GitHub Pages (ログイン不要): **${{ steps.deployment.outputs.page_url }}pr-${{ github.event.pull_request.number }}/**
