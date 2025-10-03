@@ -1,0 +1,108 @@
+name: Build Debug APK
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+  workflow_dispatch:
+
+concurrency:
+  group: pr-build-apk-${{ github.event.pull_request.number || github.ref || github.run_id }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  assemble:
+    name: Assemble Debug APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      ARTIFACT_NAME: pr-debug-apk-${{ github.run_id }}
+      ORG_GRADLE_PROJECT_org.gradle.jvmargs: -Xmx2g -Dfile.encoding=UTF-8
+      GRADLE_OPTS: -Dorg.gradle.daemon=false
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate Gradle Wrapper
+        uses: gradle/wrapper-validation-action@v1
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-read-only: ${{ github.event_name == 'pull_request' || github.ref != 'refs/heads/main' }}
+
+      - name: Android SDK をセットアップ
+        uses: android-actions/setup-android@v3
+        with:
+          packages: tools platform-tools platforms;android-34 build-tools;34.0.0
+
+      - name: Make gradlew executable
+        run: chmod +x gradlew
+
+      - name: Build debug APK
+        run: ./gradlew --console=plain assembleDebug
+
+      - name: Upload debug APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ARTIFACT_NAME }}
+          path: '**/build/outputs/apk/debug/*.apk'
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Prepare run URL
+        run: echo "RUN_URL=https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" >> "$GITHUB_ENV"
+
+      - name: Find existing artifact comment
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+        id: find-artifact-comment
+        uses: peter-evans/find-comment@v3
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-author: 'github-actions[bot]'
+          body-includes: '<!-- apk-artifact-link -->'
+
+      - name: Share artifact link on PR
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && steps.find-artifact-comment.outputs.comment-id == ''
+        uses: peter-evans/create-or-update-comment@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body: |
+            <!-- apk-artifact-link -->
+            📱 Debug APK アーティファクト **${{ env.ARTIFACT_NAME }}** をアップロードしました。
+            Run: ${{ github.run_id }} / Artifact: ${{ env.ARTIFACT_NAME }}
+            Actions の実行ページからダウンロードできます: [Run Artifacts](${{ env.RUN_URL }}#artifacts)
+            直接URLはこちらです: ${{ env.RUN_URL }}
+
+      - name: Update artifact link on PR
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && steps.find-artifact-comment.outputs.comment-id != ''
+        uses: peter-evans/create-or-update-comment@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          comment-id: ${{ steps.find-artifact-comment.outputs.comment-id }}
+          body: |
+            <!-- apk-artifact-link -->
+            📱 Debug APK アーティファクト **${{ env.ARTIFACT_NAME }}** をアップロードしました。
+            Run: ${{ github.run_id }} / Artifact: ${{ env.ARTIFACT_NAME }}
+            Actions の実行ページからダウンロードできます: [Run Artifacts](${{ env.RUN_URL }}#artifacts)
+            直接URLはこちらです: ${{ env.RUN_URL }}
+          edit-mode: replace
+
+      - name: Note for forked PR
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository
+        run: |
+          echo "Forked PR のためコメント投稿をスキップしました。Artifacts ページはこちら: $RUN_URL"
