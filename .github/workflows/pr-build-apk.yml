@@ -18,9 +18,14 @@ permissions:
   pages: write
   id-token: write
 
+env:
+  # APK ビルドと Pages デプロイを許可するアカウント
+  ALLOWED_ACTOR: ShinichiroFunatsu
+
 jobs:
   assemble:
     name: Assemble Debug APK
+    if: github.actor == env.ALLOWED_ACTOR
     runs-on: ubuntu-latest
     timeout-minutes: 30
     outputs:
@@ -148,7 +153,7 @@ jobs:
   deploy-pages:
     name: Deploy to GitHub Pages
     needs: assemble
-    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && github.actor == env.ALLOWED_ACTOR
     runs-on: ubuntu-latest
     env:
       ARTIFACT_NAME: ${{ needs.assemble.outputs['artifact-name'] }}
