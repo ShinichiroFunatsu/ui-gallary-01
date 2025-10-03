@@ -38,6 +38,10 @@ fun GalleryScreen(modifier: Modifier = Modifier) {
         GalleryItem(
             title = "Moody Snow Background",
             content = { MoodySnowBackgroundItem(state = moodySnowState) },
+        ),
+        GalleryItem(
+            title = "Scrollable Rounded Tab Navigation",
+            content = { ScrollableRoundedNavigationItem() }
         )
     )
 
