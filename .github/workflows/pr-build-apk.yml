@@ -21,7 +21,8 @@ permissions:
 jobs:
   assemble:
     name: Assemble Debug APK
-    if: contains(format(',{0},', replace(format('{0}', vars.DEPLOY_ALLOWLIST), ' ', '')), format(',{0},', github.actor))
+    # DEPLOY_ALLOWLIST には JSON 配列文字列 (例: ["user1","user2"]) を設定する想定
+    if: contains(fromJSON(vars.DEPLOY_ALLOWLIST), github.actor)
     runs-on: ubuntu-latest
     timeout-minutes: 30
     outputs:
@@ -149,7 +150,7 @@ jobs:
   deploy-pages:
     name: Deploy to GitHub Pages
     needs: assemble
-    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && contains(format(',{0},', replace(format('{0}', vars.DEPLOY_ALLOWLIST), ' ', '')), format(',{0},', github.actor))
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && contains(fromJSON(vars.DEPLOY_ALLOWLIST), github.actor)
     runs-on: ubuntu-latest
     env:
       ARTIFACT_NAME: ${{ needs.assemble.outputs['artifact-name'] }}
