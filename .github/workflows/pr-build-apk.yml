@@ -66,19 +66,41 @@ jobs:
       - name: Prepare run URL
         run: echo "RUN_URL=https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}" >> "$GITHUB_ENV"
 
-      - name: Share artifact link on PR
+      - name: Find existing artifact comment
         if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
-        uses: peter-evans/create-or-update-comment@v4
+        id: find-artifact-comment
+        uses: peter-evans/find-comment@v3
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-author: 'github-actions[bot]'
+          body-includes: '<!-- apk-artifact-link -->'
+
+      - name: Share artifact link on PR
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && steps.find-artifact-comment.outputs.comment-id == ''
+        uses: peter-evans/create-or-update-comment@v5
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           issue-number: ${{ github.event.pull_request.number }}
-          comment-identifier: apk-artifact-link
           body: |
             <!-- apk-artifact-link -->
             📱 Debug APK アーティファクト **${{ env.ARTIFACT_NAME }}** をアップロードしました。
             Run: ${{ github.run_id }} / Artifact: ${{ env.ARTIFACT_NAME }}
             Actions の実行ページからダウンロードできます: [Run Artifacts](${{ env.RUN_URL }}#artifacts)
             直接URLはこちらです: ${{ env.RUN_URL }}
+
+      - name: Update artifact link on PR
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository && steps.find-artifact-comment.outputs.comment-id != ''
+        uses: peter-evans/create-or-update-comment@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          comment-id: ${{ steps.find-artifact-comment.outputs.comment-id }}
+          body: |
+            <!-- apk-artifact-link -->
+            📱 Debug APK アーティファクト **${{ env.ARTIFACT_NAME }}** をアップロードしました。
+            Run: ${{ github.run_id }} / Artifact: ${{ env.ARTIFACT_NAME }}
+            Actions の実行ページからダウンロードできます: [Run Artifacts](${{ env.RUN_URL }}#artifacts)
+            直接URLはこちらです: ${{ env.RUN_URL }}
+          edit-mode: replace
 
       - name: Note for forked PR
         if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository
