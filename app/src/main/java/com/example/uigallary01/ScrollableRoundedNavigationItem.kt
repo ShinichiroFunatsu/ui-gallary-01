@@ -12,9 +12,10 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ScrollableTabRow
-import androidx.compose.material3.Tab
 import androidx.compose.material3.TabPosition
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -29,6 +30,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
@@ -88,27 +90,29 @@ fun ScrollableRoundedNavigationItem(modifier: Modifier = Modifier) {
         ) {
             tabs.forEachIndexed { index, tab ->
                 val isSelected = index == selectedTabIndex
-                Tab(
-                    selected = isSelected,
-                    onClick = { selectedTabIndex = index },
-                    selectedContentColor = Color.White,
-                    unselectedContentColor = MaterialTheme.colorScheme.onSurfaceVariant
-                ) {
-                    // 選択状態に合わせてウェイトを変えることで視覚的な抑揚を付ける
-                    Box(
-                        modifier = Modifier
-                            .padding(horizontal = 12.dp, vertical = 8.dp)
-                            .onGloballyPositioned { coordinates ->
-                                tabTextWidths[index] = coordinates.size.width
-                            }
-                    ) {
-                        Text(
-                            text = tab.title,
-                            style = MaterialTheme.typography.bodyMedium.copy(
-                                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium
-                            )
+                val interactionSource = remember { MutableInteractionSource() }
+                // タブタップ時のリップル演出を抑制してインジケーター移動を際立たせる
+                Box(
+                    modifier = Modifier
+                        .selectable(
+                            selected = isSelected,
+                            onClick = { selectedTabIndex = index },
+                            role = Role.Tab,
+                            interactionSource = interactionSource,
+                            indication = null
                         )
-                    }
+                        .padding(horizontal = 12.dp, vertical = 8.dp)
+                        .onGloballyPositioned { coordinates ->
+                            tabTextWidths[index] = coordinates.size.width
+                        }
+                ) {
+                    Text(
+                        text = tab.title,
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium
+                        ),
+                        color = if (isSelected) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
             }
         }
