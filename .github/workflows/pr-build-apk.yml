@@ -40,9 +40,9 @@ jobs:
           java-version: 17
 
       - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v3
+        uses: gradle/actions/setup-gradle@v4
         with:
-          cache-disabled: true
+          cache-read-only: true
 
       - name: Android SDK をセットアップ
         uses: android-actions/setup-android@v3
