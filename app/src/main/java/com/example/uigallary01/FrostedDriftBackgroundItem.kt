@@ -39,6 +39,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.lerp
+import kotlin.math.roundToInt
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.min
@@ -60,6 +61,8 @@ fun FrostedDriftBackgroundItem(
     var hue by rememberSaveable { mutableFloatStateOf(210f) }
     // ブラー半径は dp 単位で扱い、0 〜 56dp の範囲で調整する
     var blurRadius by rememberSaveable { mutableFloatStateOf(32f) }
+    // 丸の透明度を 40% 〜 100% の範囲で調整できるようにする
+    var orbAlphaMultiplier by rememberSaveable { mutableFloatStateOf(0.8f) }
 
     val surfaceColor = MaterialTheme.colorScheme.surface
     val palette = remember(hue, surfaceColor) {
@@ -75,6 +78,7 @@ fun FrostedDriftBackgroundItem(
             .clickable { isExpanded = !isExpanded },
         palette = palette,
         blurRadius = blurRadius.dp,
+        orbAlphaMultiplier = orbAlphaMultiplier,
         state = state,
     ) {
         FrostedDriftOverlay(
@@ -87,6 +91,8 @@ fun FrostedDriftBackgroundItem(
             onHueChange = { hue = it },
             blurRadius = blurRadius,
             onBlurChange = { blurRadius = it },
+            orbAlphaMultiplier = orbAlphaMultiplier,
+            onAlphaMultiplierChange = { orbAlphaMultiplier = it },
         )
     }
 }
@@ -140,6 +146,7 @@ private fun FrostedDriftSurface(
     modifier: Modifier,
     palette: FrostedDriftPalette,
     blurRadius: Dp,
+    orbAlphaMultiplier: Float,
     state: FrostedDriftBackgroundState,
     overlay: @Composable () -> Unit,
 ) {
@@ -148,6 +155,7 @@ private fun FrostedDriftSurface(
             modifier = Modifier.fillMaxSize(),
             palette = palette,
             blurRadius = blurRadius,
+            orbAlphaMultiplier = orbAlphaMultiplier,
             state = state,
         )
         overlay()
@@ -159,6 +167,7 @@ private fun FrostedDriftCanvas(
     modifier: Modifier,
     palette: FrostedDriftPalette,
     blurRadius: Dp,
+    orbAlphaMultiplier: Float,
     state: FrostedDriftBackgroundState,
 ) {
     val blurPx = with(LocalDensity.current) { blurRadius.toPx() }
@@ -185,8 +194,9 @@ private fun FrostedDriftCanvas(
                 val secondary = elapsed * orb.secondarySpeed + orb.secondaryPhase
                 val centerX = (orb.anchor.x + sin(primary) * orb.amplitude.x) * size.width
                 val centerY = (orb.anchor.y + cos(secondary) * orb.amplitude.y) * size.height
-                val color = palette.orbColor(orb.tintShift).copy(alpha = orb.alpha)
-                paint.color = color
+                val color = palette.orbColor(orb.tintShift)
+                val adjustedAlpha = (orb.alpha * orbAlphaMultiplier).coerceIn(0f, 1f)
+                paint.color = color.copy(alpha = adjustedAlpha)
                 canvas.drawCircle(
                     center = androidx.compose.ui.geometry.Offset(centerX, centerY),
                     radius = shortestSide * orb.radiusFraction,
@@ -206,6 +216,8 @@ private fun FrostedDriftOverlay(
     onHueChange: (Float) -> Unit,
     blurRadius: Float,
     onBlurChange: (Float) -> Unit,
+    orbAlphaMultiplier: Float,
+    onAlphaMultiplierChange: (Float) -> Unit,
 ) {
     val arrangement = if (isExpanded) Arrangement.SpaceBetween else Arrangement.Bottom
     Column(
@@ -240,6 +252,15 @@ private fun FrostedDriftOverlay(
                     valueRange = 0f..56f,
                     valueFormatter = { value ->
                         "${value.toInt()}dp"
+                    },
+                )
+                FrostedDriftSlider(
+                    label = "Opacity",
+                    value = orbAlphaMultiplier,
+                    onValueChange = onAlphaMultiplierChange,
+                    valueRange = 0.4f..1f,
+                    valueFormatter = { value ->
+                        "${(value * 100f).roundToInt()}%"
                     },
                 )
             }
