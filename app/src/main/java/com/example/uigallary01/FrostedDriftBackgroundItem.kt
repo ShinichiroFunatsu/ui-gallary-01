@@ -54,7 +54,7 @@ fun FrostedDriftBackgroundItem(
     // タップで展開／折りたたみを切り替える
     var isExpanded by rememberSaveable { mutableStateOf(false) }
     val animatedHeight by animateDpAsState(
-        targetValue = if (isExpanded) 420.dp else 160.dp,
+        targetValue = if (isExpanded) 840.dp else 160.dp,
         label = "frostedDriftHeight",
     )
     // 色相（Hue）を 0〜360 度で保持し、展開時に変更できるようにする
@@ -65,6 +65,8 @@ fun FrostedDriftBackgroundItem(
     var orbAlphaMultiplier by rememberSaveable { mutableFloatStateOf(0.8f) }
     // 丸のサイズを基準比率で調整できるようにする
     var orbSizeMultiplier by rememberSaveable { mutableFloatStateOf(1f) }
+    // 丸の配色モード（1色／3色）を切り替えられるようにする
+    var colorMode by rememberSaveable { mutableStateOf(FrostedColorMode.Monochrome) }
 
     val surfaceColor = MaterialTheme.colorScheme.surface
     val palette = remember(hue, surfaceColor) {
@@ -82,6 +84,7 @@ fun FrostedDriftBackgroundItem(
         blurRadius = blurRadius.dp,
         orbAlphaMultiplier = orbAlphaMultiplier,
         orbSizeMultiplier = orbSizeMultiplier,
+        colorMode = colorMode,
         state = state,
     ) {
         FrostedDriftOverlay(
@@ -98,6 +101,8 @@ fun FrostedDriftBackgroundItem(
             onAlphaMultiplierChange = { orbAlphaMultiplier = it },
             orbSizeMultiplier = orbSizeMultiplier,
             onSizeMultiplierChange = { orbSizeMultiplier = it },
+            colorMode = colorMode,
+            onColorModeChange = { colorMode = it },
         )
     }
 }
@@ -153,6 +158,7 @@ private fun FrostedDriftSurface(
     blurRadius: Dp,
     orbAlphaMultiplier: Float,
     orbSizeMultiplier: Float,
+    colorMode: FrostedColorMode,
     state: FrostedDriftBackgroundState,
     overlay: @Composable () -> Unit,
 ) {
@@ -163,6 +169,7 @@ private fun FrostedDriftSurface(
             blurRadius = blurRadius,
             orbAlphaMultiplier = orbAlphaMultiplier,
             orbSizeMultiplier = orbSizeMultiplier,
+            colorMode = colorMode,
             state = state,
         )
         overlay()
@@ -176,6 +183,7 @@ private fun FrostedDriftCanvas(
     blurRadius: Dp,
     orbAlphaMultiplier: Float,
     orbSizeMultiplier: Float,
+    colorMode: FrostedColorMode,
     state: FrostedDriftBackgroundState,
 ) {
     val blurPx = with(LocalDensity.current) { blurRadius.toPx() }
@@ -202,7 +210,11 @@ private fun FrostedDriftCanvas(
                 val secondary = elapsed * orb.secondarySpeed + orb.secondaryPhase
                 val centerX = (orb.anchor.x + sin(primary) * orb.amplitude.x) * size.width
                 val centerY = (orb.anchor.y + cos(secondary) * orb.amplitude.y) * size.height
-                val color = palette.orbColor(orb.tintShift)
+                val color = palette.orbColor(
+                    shift = orb.tintShift,
+                    colorMode = colorMode,
+                    band = orb.colorBand,
+                )
                 val adjustedAlpha = (orb.alpha * orbAlphaMultiplier).coerceIn(0f, 1f)
                 paint.color = color.copy(alpha = adjustedAlpha)
                 canvas.drawCircle(
@@ -228,6 +240,8 @@ private fun FrostedDriftOverlay(
     onAlphaMultiplierChange: (Float) -> Unit,
     orbSizeMultiplier: Float,
     onSizeMultiplierChange: (Float) -> Unit,
+    colorMode: FrostedColorMode,
+    onColorModeChange: (FrostedColorMode) -> Unit,
 ) {
     val arrangement = if (isExpanded) Arrangement.SpaceBetween else Arrangement.Bottom
     Column(
@@ -245,6 +259,10 @@ private fun FrostedDriftOverlay(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
                 horizontalAlignment = Alignment.Start,
             ) {
+                FrostedDriftColorModeSelector(
+                    mode = colorMode,
+                    onModeChange = onColorModeChange,
+                )
                 FrostedDriftSlider(
                     label = "Hue",
                     value = hue,
@@ -337,6 +355,7 @@ internal data class FrostedOrb(
     val secondarySpeed: Float,
     val primaryPhase: Float,
     val secondaryPhase: Float,
+    val colorBand: Int,
 )
 
 private fun generateOrbs(
@@ -381,6 +400,7 @@ private fun generateOrbs(
             secondarySpeed = lerp(speedRange.start, speedRange.endInclusive, random.nextFloat()),
             primaryPhase = lerp(0f, (2f * PI).toFloat(), random.nextFloat()),
             secondaryPhase = lerp(0f, (2f * PI).toFloat(), random.nextFloat()),
+            colorBand = random.nextInt(3),
         )
     }
 }
@@ -397,9 +417,12 @@ private class FrostedDriftPalette(
     private val baseSurface: Color,
 ) {
     // 色相から丸の色を計算し、背景にはテーマのサーフェスカラーを使うパレット
-    private val normalizedHue = hue % 360f
+    private val normalizedHue = hue.wrapHue()
     private val baseSaturation = 0.58f
     private val baseLightness = 0.58f
+    private val triadicHues: List<Float> = listOf(0f, 18f, -18f).map { offset ->
+        (normalizedHue + offset).wrapHue()
+    }
 
     val background: Color = baseSurface
     val titleColor: Color = Color.hsl(
@@ -408,13 +431,81 @@ private class FrostedDriftPalette(
         lightness = 0.28f,
     )
 
-    fun orbColor(shift: Float): Color {
+    fun orbColor(shift: Float, colorMode: FrostedColorMode, band: Int): Color {
+        val baseHue = when (colorMode) {
+            FrostedColorMode.Monochrome -> normalizedHue
+            FrostedColorMode.Tricolor -> triadicHues[band % triadicHues.size]
+        }
         val saturation = (baseSaturation + shift * 0.25f).coerceIn(0.1f, 0.9f)
         val lightness = (baseLightness + shift * 0.45f).coerceIn(0.2f, 0.95f)
         return Color.hsl(
-            hue = normalizedHue,
+            hue = baseHue,
             saturation = saturation,
             lightness = lightness,
         )
     }
+}
+
+private fun Float.wrapHue(): Float {
+    val raw = this % 360f
+    return if (raw < 0f) raw + 360f else raw
+}
+
+private enum class FrostedColorMode {
+    Monochrome,
+    Tricolor,
+}
+
+@Composable
+private fun FrostedDriftColorModeSelector(
+    mode: FrostedColorMode,
+    onModeChange: (FrostedColorMode) -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            text = "Color Mode",
+            style = MaterialTheme.typography.titleSmall,
+            color = MaterialTheme.colorScheme.onSurface,
+        )
+        // 一色／三色を選択するチップを横並びに配置
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            FrostedDriftModeChip(
+                label = "1 Color",
+                selected = mode == FrostedColorMode.Monochrome,
+                onClick = { onModeChange(FrostedColorMode.Monochrome) },
+            )
+            FrostedDriftModeChip(
+                label = "3 Colors",
+                selected = mode == FrostedColorMode.Tricolor,
+                onClick = { onModeChange(FrostedColorMode.Tricolor) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun FrostedDriftModeChip(
+    label: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    androidx.compose.material3.FilterChip(
+        selected = selected,
+        onClick = onClick,
+        label = {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelLarge,
+            )
+        },
+        colors = androidx.compose.material3.FilterChipDefaults.filterChipColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+            selectedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.24f),
+            labelColor = MaterialTheme.colorScheme.onSurface,
+            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        ),
+    )
 }
