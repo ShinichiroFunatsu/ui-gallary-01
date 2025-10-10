@@ -54,7 +54,7 @@ fun FrostedDriftBackgroundItem(
     // タップで展開／折りたたみを切り替える
     var isExpanded by rememberSaveable { mutableStateOf(false) }
     val animatedHeight by animateDpAsState(
-        targetValue = if (isExpanded) 360.dp else 160.dp,
+        targetValue = if (isExpanded) 420.dp else 160.dp,
         label = "frostedDriftHeight",
     )
     // 色相（Hue）を 0〜360 度で保持し、展開時に変更できるようにする
@@ -63,6 +63,8 @@ fun FrostedDriftBackgroundItem(
     var blurRadius by rememberSaveable { mutableFloatStateOf(32f) }
     // 丸の透明度を 40% 〜 100% の範囲で調整できるようにする
     var orbAlphaMultiplier by rememberSaveable { mutableFloatStateOf(0.8f) }
+    // 丸のサイズを基準比率で調整できるようにする
+    var orbSizeMultiplier by rememberSaveable { mutableFloatStateOf(1f) }
 
     val surfaceColor = MaterialTheme.colorScheme.surface
     val palette = remember(hue, surfaceColor) {
@@ -79,6 +81,7 @@ fun FrostedDriftBackgroundItem(
         palette = palette,
         blurRadius = blurRadius.dp,
         orbAlphaMultiplier = orbAlphaMultiplier,
+        orbSizeMultiplier = orbSizeMultiplier,
         state = state,
     ) {
         FrostedDriftOverlay(
@@ -93,6 +96,8 @@ fun FrostedDriftBackgroundItem(
             onBlurChange = { blurRadius = it },
             orbAlphaMultiplier = orbAlphaMultiplier,
             onAlphaMultiplierChange = { orbAlphaMultiplier = it },
+            orbSizeMultiplier = orbSizeMultiplier,
+            onSizeMultiplierChange = { orbSizeMultiplier = it },
         )
     }
 }
@@ -147,6 +152,7 @@ private fun FrostedDriftSurface(
     palette: FrostedDriftPalette,
     blurRadius: Dp,
     orbAlphaMultiplier: Float,
+    orbSizeMultiplier: Float,
     state: FrostedDriftBackgroundState,
     overlay: @Composable () -> Unit,
 ) {
@@ -156,6 +162,7 @@ private fun FrostedDriftSurface(
             palette = palette,
             blurRadius = blurRadius,
             orbAlphaMultiplier = orbAlphaMultiplier,
+            orbSizeMultiplier = orbSizeMultiplier,
             state = state,
         )
         overlay()
@@ -168,6 +175,7 @@ private fun FrostedDriftCanvas(
     palette: FrostedDriftPalette,
     blurRadius: Dp,
     orbAlphaMultiplier: Float,
+    orbSizeMultiplier: Float,
     state: FrostedDriftBackgroundState,
 ) {
     val blurPx = with(LocalDensity.current) { blurRadius.toPx() }
@@ -199,7 +207,7 @@ private fun FrostedDriftCanvas(
                 paint.color = color.copy(alpha = adjustedAlpha)
                 canvas.drawCircle(
                     center = androidx.compose.ui.geometry.Offset(centerX, centerY),
-                    radius = shortestSide * orb.radiusFraction,
+                    radius = shortestSide * orb.radiusFraction * orbSizeMultiplier,
                     paint = paint,
                 )
             }
@@ -218,6 +226,8 @@ private fun FrostedDriftOverlay(
     onBlurChange: (Float) -> Unit,
     orbAlphaMultiplier: Float,
     onAlphaMultiplierChange: (Float) -> Unit,
+    orbSizeMultiplier: Float,
+    onSizeMultiplierChange: (Float) -> Unit,
 ) {
     val arrangement = if (isExpanded) Arrangement.SpaceBetween else Arrangement.Bottom
     Column(
@@ -232,7 +242,7 @@ private fun FrostedDriftOverlay(
         )
         AnimatedVisibility(visible = isExpanded) {
             Column(
-                verticalArrangement = Arrangement.spacedBy(20.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
                 horizontalAlignment = Alignment.Start,
             ) {
                 FrostedDriftSlider(
@@ -259,6 +269,15 @@ private fun FrostedDriftOverlay(
                     value = orbAlphaMultiplier,
                     onValueChange = onAlphaMultiplierChange,
                     valueRange = 0.4f..1f,
+                    valueFormatter = { value ->
+                        "${(value * 100f).roundToInt()}%"
+                    },
+                )
+                FrostedDriftSlider(
+                    label = "Size",
+                    value = orbSizeMultiplier,
+                    onValueChange = onSizeMultiplierChange,
+                    valueRange = 0.6f..1.4f,
                     valueFormatter = { value ->
                         "${(value * 100f).roundToInt()}%"
                     },
