@@ -23,7 +23,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.Stable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -222,24 +221,3 @@ private fun DrawScope.drawSnowField(
 }
 
 private const val TwoPi: Float = (PI * 2.0).toFloat()
-
-@Composable
-private fun State<Float>.rememberContinuousProgress(): State<Float> {
-    // 進行度がループするたびに累積値へ変換して雪の動きを途切れさせない
-    val totalProgress = remember { mutableFloatStateOf(value) }
-    val previousProgress = remember { mutableFloatStateOf(value) }
-
-    LaunchedEffect(value) {
-        val current = value
-        val last = previousProgress.floatValue
-        val delta = if (current < last) {
-            (1f - last) + current
-        } else {
-            current - last
-        }
-        totalProgress.floatValue += delta
-        previousProgress.floatValue = current
-    }
-
-    return totalProgress
-}
