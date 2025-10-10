@@ -61,7 +61,10 @@ fun FrostedDriftBackgroundItem(
     // ブラー半径は dp 単位で扱い、0 〜 56dp の範囲で調整する
     var blurRadius by rememberSaveable { mutableFloatStateOf(32f) }
 
-    val palette = remember(hue) { FrostedDriftPalette(hue = hue) }
+    val surfaceColor = MaterialTheme.colorScheme.surface
+    val palette = remember(hue, surfaceColor) {
+        FrostedDriftPalette(hue = hue, baseSurface = surfaceColor)
+    }
 
     FrostedDriftSurface(
         modifier = modifier
@@ -349,17 +352,16 @@ private data class RangeBundle(
     val alpha: ClosedFloatingPointRange<Float>,
 )
 
-private class FrostedDriftPalette(hue: Float) {
-    // 色相から背景と丸の色を計算する簡易パレット
+private class FrostedDriftPalette(
+    hue: Float,
+    private val baseSurface: Color,
+) {
+    // 色相から丸の色を計算し、背景にはテーマのサーフェスカラーを使うパレット
     private val normalizedHue = hue % 360f
     private val baseSaturation = 0.58f
     private val baseLightness = 0.58f
 
-    val background: Color = Color.hsl(
-        hue = normalizedHue,
-        saturation = 0.24f,
-        lightness = 0.92f,
-    )
+    val background: Color = baseSurface
     val titleColor: Color = Color.hsl(
         hue = normalizedHue,
         saturation = 0.40f,
