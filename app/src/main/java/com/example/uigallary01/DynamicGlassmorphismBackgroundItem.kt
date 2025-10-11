@@ -1,5 +1,6 @@
 package com.example.uigallary01
 
+import android.graphics.BlurMaskFilter
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.Canvas
@@ -31,31 +32,30 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import android.graphics.BlurMaskFilter
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.lerp
-import kotlin.math.roundToInt
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.min
+import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.random.Random
 
 @Composable
-fun FrostedDriftBackgroundItem(
+fun DynamicGlassmorphismBackgroundItem(
     modifier: Modifier = Modifier,
-    state: FrostedDriftBackgroundState = rememberFrostedDriftBackgroundState(),
+    state: DynamicGlassmorphismBackgroundState = rememberDynamicGlassmorphismBackgroundState(),
 ) {
     // タップで展開／折りたたみを切り替える
     var isExpanded by rememberSaveable { mutableStateOf(false) }
     val animatedHeight by animateDpAsState(
         targetValue = if (isExpanded) 840.dp else 160.dp,
-        label = "frostedDriftHeight",
+        label = "dynamicGlassmorphismHeight",
     )
     // 色相（Hue）を 0〜360 度で保持し、展開時に変更できるようにする
     var hue by rememberSaveable { mutableFloatStateOf(210f) }
@@ -66,14 +66,14 @@ fun FrostedDriftBackgroundItem(
     // 丸のサイズを基準比率で調整できるようにする
     var orbSizeMultiplier by rememberSaveable { mutableFloatStateOf(1f) }
     // 丸の配色モード（1色／3色）を切り替えられるようにする
-    var colorMode by rememberSaveable { mutableStateOf(FrostedColorMode.Monochrome) }
+    var colorMode by rememberSaveable { mutableStateOf(DynamicGlassColorMode.Monochrome) }
 
     val surfaceColor = MaterialTheme.colorScheme.surface
     val palette = remember(hue, surfaceColor) {
-        FrostedDriftPalette(hue = hue, baseSurface = surfaceColor)
+        DynamicGlassmorphismPalette(hue = hue, baseSurface = surfaceColor)
     }
 
-    FrostedDriftSurface(
+    DynamicGlassmorphismSurface(
         modifier = modifier
             .fillMaxWidth()
             .height(animatedHeight)
@@ -87,7 +87,7 @@ fun FrostedDriftBackgroundItem(
         colorMode = colorMode,
         state = state,
     ) {
-        FrostedDriftOverlay(
+        DynamicGlassmorphismOverlay(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 24.dp, vertical = 28.dp),
@@ -108,12 +108,12 @@ fun FrostedDriftBackgroundItem(
 }
 
 @Composable
-fun rememberFrostedDriftBackgroundState(
+fun rememberDynamicGlassmorphismBackgroundState(
     largeCount: Int = 6,
     mediumCount: Int = 10,
     smallCount: Int = 16,
     seed: Int = 2025,
-): FrostedDriftBackgroundState {
+): DynamicGlassmorphismBackgroundState {
     // 大小様々な丸を生成し、常に同じ動きになるようシードを指定
     val orbs = remember(largeCount, mediumCount, smallCount, seed) {
         val random = Random(seed)
@@ -142,28 +142,28 @@ fun rememberFrostedDriftBackgroundState(
         }
     }
 
-    return remember { FrostedDriftBackgroundState(orbs = orbs, elapsedSeconds = elapsed) }
+    return remember { DynamicGlassmorphismBackgroundState(orbs = orbs, elapsedSeconds = elapsed) }
 }
 
 @Stable
-class FrostedDriftBackgroundState internal constructor(
-    internal val orbs: List<FrostedOrb>,
+class DynamicGlassmorphismBackgroundState internal constructor(
+    internal val orbs: List<GlassOrb>,
     internal val elapsedSeconds: State<Float>,
 )
 
 @Composable
-private fun FrostedDriftSurface(
+private fun DynamicGlassmorphismSurface(
     modifier: Modifier,
-    palette: FrostedDriftPalette,
+    palette: DynamicGlassmorphismPalette,
     blurRadius: Dp,
     orbAlphaMultiplier: Float,
     orbSizeMultiplier: Float,
-    colorMode: FrostedColorMode,
-    state: FrostedDriftBackgroundState,
+    colorMode: DynamicGlassColorMode,
+    state: DynamicGlassmorphismBackgroundState,
     overlay: @Composable () -> Unit,
 ) {
     Box(modifier = modifier) {
-        FrostedDriftCanvas(
+        DynamicGlassmorphismCanvas(
             modifier = Modifier.fillMaxSize(),
             palette = palette,
             blurRadius = blurRadius,
@@ -177,14 +177,14 @@ private fun FrostedDriftSurface(
 }
 
 @Composable
-private fun FrostedDriftCanvas(
+private fun DynamicGlassmorphismCanvas(
     modifier: Modifier,
-    palette: FrostedDriftPalette,
+    palette: DynamicGlassmorphismPalette,
     blurRadius: Dp,
     orbAlphaMultiplier: Float,
     orbSizeMultiplier: Float,
-    colorMode: FrostedColorMode,
-    state: FrostedDriftBackgroundState,
+    colorMode: DynamicGlassColorMode,
+    state: DynamicGlassmorphismBackgroundState,
 ) {
     val blurPx = with(LocalDensity.current) { blurRadius.toPx() }
     val blurMaskFilter = remember(blurPx) {
@@ -228,9 +228,9 @@ private fun FrostedDriftCanvas(
 }
 
 @Composable
-private fun FrostedDriftOverlay(
+private fun DynamicGlassmorphismOverlay(
     modifier: Modifier,
-    palette: FrostedDriftPalette,
+    palette: DynamicGlassmorphismPalette,
     isExpanded: Boolean,
     hue: Float,
     onHueChange: (Float) -> Unit,
@@ -240,8 +240,8 @@ private fun FrostedDriftOverlay(
     onAlphaMultiplierChange: (Float) -> Unit,
     orbSizeMultiplier: Float,
     onSizeMultiplierChange: (Float) -> Unit,
-    colorMode: FrostedColorMode,
-    onColorModeChange: (FrostedColorMode) -> Unit,
+    colorMode: DynamicGlassColorMode,
+    onColorModeChange: (DynamicGlassColorMode) -> Unit,
 ) {
     val arrangement = if (isExpanded) Arrangement.SpaceBetween else Arrangement.Bottom
     Column(
@@ -250,7 +250,7 @@ private fun FrostedDriftOverlay(
         horizontalAlignment = Alignment.Start,
     ) {
         Text(
-            text = "Frosted Drift",
+            text = "Dynamic Glassmorphism",
             style = MaterialTheme.typography.headlineSmall,
             color = palette.titleColor,
         )
@@ -259,11 +259,11 @@ private fun FrostedDriftOverlay(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
                 horizontalAlignment = Alignment.Start,
             ) {
-                FrostedDriftColorModeSelector(
+                DynamicGlassmorphismColorModeSelector(
                     mode = colorMode,
                     onModeChange = onColorModeChange,
                 )
-                FrostedDriftSlider(
+                DynamicGlassmorphismSlider(
                     label = "Hue",
                     value = hue,
                     onValueChange = onHueChange,
@@ -273,7 +273,7 @@ private fun FrostedDriftOverlay(
                         "${value.toInt()}°"
                     },
                 )
-                FrostedDriftSlider(
+                DynamicGlassmorphismSlider(
                     label = "Blur",
                     value = blurRadius,
                     onValueChange = onBlurChange,
@@ -282,7 +282,7 @@ private fun FrostedDriftOverlay(
                         "${value.toInt()}dp"
                     },
                 )
-                FrostedDriftSlider(
+                DynamicGlassmorphismSlider(
                     label = "Opacity",
                     value = orbAlphaMultiplier,
                     onValueChange = onAlphaMultiplierChange,
@@ -291,7 +291,7 @@ private fun FrostedDriftOverlay(
                         "${(value * 100f).roundToInt()}%"
                     },
                 )
-                FrostedDriftSlider(
+                DynamicGlassmorphismSlider(
                     label = "Size",
                     value = orbSizeMultiplier,
                     onValueChange = onSizeMultiplierChange,
@@ -306,7 +306,7 @@ private fun FrostedDriftOverlay(
 }
 
 @Composable
-private fun FrostedDriftSlider(
+private fun DynamicGlassmorphismSlider(
     label: String,
     value: Float,
     onValueChange: (Float) -> Unit,
@@ -345,7 +345,7 @@ private fun FrostedDriftSlider(
 
 private enum class OrbSize { Large, Medium, Small }
 
-internal data class FrostedOrb(
+internal data class GlassOrb(
     val anchor: androidx.compose.ui.geometry.Offset,
     val amplitude: androidx.compose.ui.geometry.Offset,
     val radiusFraction: Float,
@@ -362,22 +362,22 @@ private fun generateOrbs(
     random: Random,
     count: Int,
     size: OrbSize,
-): List<FrostedOrb> {
+): List<GlassOrb> {
     if (count == 0) return emptyList()
     val (radiusRange, speedRange, amplitudeRange, alphaRange) = when (size) {
-        OrbSize.Large -> RangeBundle(
+        OrbSize.Large -> OrbRangeBundle(
             radius = 0.18f..0.26f,
             speed = 0.08f..0.16f,
             amplitude = 0.10f..0.18f,
             alpha = 0.28f..0.42f,
         )
-        OrbSize.Medium -> RangeBundle(
+        OrbSize.Medium -> OrbRangeBundle(
             radius = 0.10f..0.16f,
             speed = 0.12f..0.24f,
             amplitude = 0.12f..0.22f,
             alpha = 0.32f..0.52f,
         )
-        OrbSize.Small -> RangeBundle(
+        OrbSize.Small -> OrbRangeBundle(
             radius = 0.04f..0.08f,
             speed = 0.18f..0.36f,
             amplitude = 0.18f..0.32f,
@@ -387,7 +387,7 @@ private fun generateOrbs(
     return List(count) {
         val anchor = androidx.compose.ui.geometry.Offset(random.nextFloat(), random.nextFloat())
         val amplitudeValue = lerp(amplitudeRange.start, amplitudeRange.endInclusive, random.nextFloat())
-        FrostedOrb(
+        GlassOrb(
             anchor = anchor,
             amplitude = androidx.compose.ui.geometry.Offset(
                 x = amplitudeValue * random.nextFloat(),
@@ -405,14 +405,14 @@ private fun generateOrbs(
     }
 }
 
-private data class RangeBundle(
+private data class OrbRangeBundle(
     val radius: ClosedFloatingPointRange<Float>,
     val speed: ClosedFloatingPointRange<Float>,
     val amplitude: ClosedFloatingPointRange<Float>,
     val alpha: ClosedFloatingPointRange<Float>,
 )
 
-private class FrostedDriftPalette(
+private class DynamicGlassmorphismPalette(
     hue: Float,
     private val baseSurface: Color,
 ) {
@@ -431,10 +431,10 @@ private class FrostedDriftPalette(
         lightness = 0.28f,
     )
 
-    fun orbColor(shift: Float, colorMode: FrostedColorMode, band: Int): Color {
+    fun orbColor(shift: Float, colorMode: DynamicGlassColorMode, band: Int): Color {
         val baseHue = when (colorMode) {
-            FrostedColorMode.Monochrome -> normalizedHue
-            FrostedColorMode.Tricolor -> triadicHues[band % triadicHues.size]
+            DynamicGlassColorMode.Monochrome -> normalizedHue
+            DynamicGlassColorMode.Tricolor -> triadicHues[band % triadicHues.size]
         }
         val saturation = (baseSaturation + shift * 0.25f).coerceIn(0.1f, 0.9f)
         val lightness = (baseLightness + shift * 0.45f).coerceIn(0.2f, 0.95f)
@@ -451,15 +451,15 @@ private fun Float.wrapHue(): Float {
     return if (raw < 0f) raw + 360f else raw
 }
 
-private enum class FrostedColorMode {
+private enum class DynamicGlassColorMode {
     Monochrome,
     Tricolor,
 }
 
 @Composable
-private fun FrostedDriftColorModeSelector(
-    mode: FrostedColorMode,
-    onModeChange: (FrostedColorMode) -> Unit,
+private fun DynamicGlassmorphismColorModeSelector(
+    mode: DynamicGlassColorMode,
+    onModeChange: (DynamicGlassColorMode) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
@@ -472,22 +472,22 @@ private fun FrostedDriftColorModeSelector(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            FrostedDriftModeChip(
+            DynamicGlassmorphismModeChip(
                 label = "1 Color",
-                selected = mode == FrostedColorMode.Monochrome,
-                onClick = { onModeChange(FrostedColorMode.Monochrome) },
+                selected = mode == DynamicGlassColorMode.Monochrome,
+                onClick = { onModeChange(DynamicGlassColorMode.Monochrome) },
             )
-            FrostedDriftModeChip(
+            DynamicGlassmorphismModeChip(
                 label = "3 Colors",
-                selected = mode == FrostedColorMode.Tricolor,
-                onClick = { onModeChange(FrostedColorMode.Tricolor) },
+                selected = mode == DynamicGlassColorMode.Tricolor,
+                onClick = { onModeChange(DynamicGlassColorMode.Tricolor) },
             )
         }
     }
 }
 
 @Composable
-private fun FrostedDriftModeChip(
+private fun DynamicGlassmorphismModeChip(
     label: String,
     selected: Boolean,
     onClick: () -> Unit,
