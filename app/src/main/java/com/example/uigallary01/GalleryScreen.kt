@@ -41,6 +41,10 @@ fun GalleryScreen(modifier: Modifier = Modifier) {
             content = { DynamicGlassmorphismBackgroundItem(state = dynamicGlassmorphismState) }
         ),
         GalleryItem(
+            title = "Ambient Particle Photo",
+            content = { AmbientParticlePhotoItem() }
+        ),
+        GalleryItem(
             title = "Moody Snow Background",
             content = { MoodySnowBackgroundItem(state = moodySnowState) },
         )
