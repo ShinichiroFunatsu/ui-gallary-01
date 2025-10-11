@@ -8,6 +8,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -218,17 +219,11 @@ private fun DynamicGlassmorphismOverlay(
     orbAlphaMultiplier: Float,
     orbSizeMultiplier: Float,
 ) {
-    val arrangement = if (isExpanded) Arrangement.SpaceBetween else Arrangement.Bottom
     Column(
         modifier = modifier,
-        verticalArrangement = arrangement,
+        verticalArrangement = Arrangement.Bottom,
         horizontalAlignment = Alignment.Start,
     ) {
-        Text(
-            text = "Dynamic Glassmorphism",
-            style = MaterialTheme.typography.headlineSmall,
-            color = palette.titleColor,
-        )
         AnimatedVisibility(visible = isExpanded) {
             Column(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -250,8 +245,14 @@ private fun DynamicGlassmorphismOverlay(
                     label = "Size",
                     value = "${(orbSizeMultiplier * 100f).roundToInt()}%",
                 )
+                Spacer(modifier = Modifier.height(16.dp))
             }
         }
+        ScrambleText(
+            text = "Dynamic Glassmorphism",
+            style = MaterialTheme.typography.headlineSmall,
+            color = palette.titleColor,
+        )
     }
 }
 
