@@ -384,7 +384,7 @@ private fun DynamicGlassmorphismReadout(
 
 // 各パラメーターが往復する範囲と周期を定義
 private val HueRange = 0f..360f
-private val BlurRange = 0f..56f
+private val BlurRange = 10f..56f
 private val OpacityRange = 0.4f..1f
 private val SizeRange = 0.6f..1.4f
 
