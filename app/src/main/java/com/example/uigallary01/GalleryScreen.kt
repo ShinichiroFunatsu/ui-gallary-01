@@ -20,6 +20,7 @@ import com.example.uigallary01.ui.theme.UiGallary01Theme
 @Composable
 fun GalleryScreen(modifier: Modifier = Modifier) {
     val moodySnowState = rememberMoodySnowBackgroundState()
+    val dynamicGlassmorphismState = rememberDynamicGlassmorphismBackgroundState()
 
     // ギャラリーに表示する要素を定義
     val galleryItems = listOf(
@@ -34,6 +35,10 @@ fun GalleryScreen(modifier: Modifier = Modifier) {
         GalleryItem(
             title = "Digital Rain Background",
             content = { DigitalRainBackgroundItem() }
+        ),
+        GalleryItem(
+            title = "Dynamic Glassmorphism Background",
+            content = { DynamicGlassmorphismBackgroundItem(state = dynamicGlassmorphismState) }
         ),
         GalleryItem(
             title = "Moody Snow Background",
