@@ -8,15 +8,12 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -35,7 +32,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.util.lerp
@@ -57,16 +53,12 @@ fun DynamicGlassmorphismBackgroundItem(
         targetValue = if (isExpanded) 840.dp else 160.dp,
         label = "dynamicGlassmorphismHeight",
     )
-    // 色相（Hue）を 0〜360 度で保持し、展開時に変更できるようにする
-    var hue by rememberSaveable { mutableFloatStateOf(210f) }
-    // ブラー半径は dp 単位で扱い、0 〜 56dp の範囲で調整する
-    var blurRadius by rememberSaveable { mutableFloatStateOf(32f) }
-    // 丸の透明度を 40% 〜 100% の範囲で調整できるようにする
-    var orbAlphaMultiplier by rememberSaveable { mutableFloatStateOf(0.8f) }
-    // 丸のサイズを基準比率で調整できるようにする
-    var orbSizeMultiplier by rememberSaveable { mutableFloatStateOf(1f) }
-    // 丸の配色モード（1色／3色）を切り替えられるようにする
-    var colorMode by rememberSaveable { mutableStateOf(DynamicGlassColorMode.Monochrome) }
+    val elapsedSeconds by state.elapsedSeconds
+    // 時間経過で滑らかに変化させる各種パラメーターを計算
+    val hue = HueRange.oscillate(elapsedSeconds, HuePeriodSeconds)
+    val blurRadius = BlurRange.oscillate(elapsedSeconds, BlurPeriodSeconds)
+    val orbAlphaMultiplier = OpacityRange.oscillate(elapsedSeconds, OpacityPeriodSeconds)
+    val orbSizeMultiplier = SizeRange.oscillate(elapsedSeconds, SizePeriodSeconds)
 
     val surfaceColor = MaterialTheme.colorScheme.surface
     val palette = remember(hue, surfaceColor) {
@@ -84,7 +76,6 @@ fun DynamicGlassmorphismBackgroundItem(
         blurRadius = blurRadius.dp,
         orbAlphaMultiplier = orbAlphaMultiplier,
         orbSizeMultiplier = orbSizeMultiplier,
-        colorMode = colorMode,
         state = state,
     ) {
         DynamicGlassmorphismOverlay(
@@ -94,15 +85,9 @@ fun DynamicGlassmorphismBackgroundItem(
             palette = palette,
             isExpanded = isExpanded,
             hue = hue,
-            onHueChange = { hue = it },
             blurRadius = blurRadius,
-            onBlurChange = { blurRadius = it },
             orbAlphaMultiplier = orbAlphaMultiplier,
-            onAlphaMultiplierChange = { orbAlphaMultiplier = it },
             orbSizeMultiplier = orbSizeMultiplier,
-            onSizeMultiplierChange = { orbSizeMultiplier = it },
-            colorMode = colorMode,
-            onColorModeChange = { colorMode = it },
         )
     }
 }
@@ -158,7 +143,6 @@ private fun DynamicGlassmorphismSurface(
     blurRadius: Dp,
     orbAlphaMultiplier: Float,
     orbSizeMultiplier: Float,
-    colorMode: DynamicGlassColorMode,
     state: DynamicGlassmorphismBackgroundState,
     overlay: @Composable () -> Unit,
 ) {
@@ -169,7 +153,6 @@ private fun DynamicGlassmorphismSurface(
             blurRadius = blurRadius,
             orbAlphaMultiplier = orbAlphaMultiplier,
             orbSizeMultiplier = orbSizeMultiplier,
-            colorMode = colorMode,
             state = state,
         )
         overlay()
@@ -183,7 +166,6 @@ private fun DynamicGlassmorphismCanvas(
     blurRadius: Dp,
     orbAlphaMultiplier: Float,
     orbSizeMultiplier: Float,
-    colorMode: DynamicGlassColorMode,
     state: DynamicGlassmorphismBackgroundState,
 ) {
     val blurPx = with(LocalDensity.current) { blurRadius.toPx() }
@@ -212,7 +194,6 @@ private fun DynamicGlassmorphismCanvas(
                 val centerY = (orb.anchor.y + cos(secondary) * orb.amplitude.y) * size.height
                 val color = palette.orbColor(
                     shift = orb.tintShift,
-                    colorMode = colorMode,
                     band = orb.colorBand,
                 )
                 val adjustedAlpha = (orb.alpha * orbAlphaMultiplier).coerceIn(0f, 1f)
@@ -233,15 +214,9 @@ private fun DynamicGlassmorphismOverlay(
     palette: DynamicGlassmorphismPalette,
     isExpanded: Boolean,
     hue: Float,
-    onHueChange: (Float) -> Unit,
     blurRadius: Float,
-    onBlurChange: (Float) -> Unit,
     orbAlphaMultiplier: Float,
-    onAlphaMultiplierChange: (Float) -> Unit,
     orbSizeMultiplier: Float,
-    onSizeMultiplierChange: (Float) -> Unit,
-    colorMode: DynamicGlassColorMode,
-    onColorModeChange: (DynamicGlassColorMode) -> Unit,
 ) {
     val arrangement = if (isExpanded) Arrangement.SpaceBetween else Arrangement.Bottom
     Column(
@@ -259,87 +234,24 @@ private fun DynamicGlassmorphismOverlay(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
                 horizontalAlignment = Alignment.Start,
             ) {
-                DynamicGlassmorphismColorModeSelector(
-                    mode = colorMode,
-                    onModeChange = onColorModeChange,
-                )
-                DynamicGlassmorphismSlider(
+                DynamicGlassmorphismReadout(
                     label = "Hue",
-                    value = hue,
-                    onValueChange = onHueChange,
-                    valueRange = 0f..360f,
-                    valueFormatter = { value ->
-                        // 角度として表示する
-                        "${value.toInt()}°"
-                    },
+                    value = "${hue.toInt()}°",
                 )
-                DynamicGlassmorphismSlider(
+                DynamicGlassmorphismReadout(
                     label = "Blur",
-                    value = blurRadius,
-                    onValueChange = onBlurChange,
-                    valueRange = 0f..56f,
-                    valueFormatter = { value ->
-                        "${value.toInt()}dp"
-                    },
+                    value = "${blurRadius.toInt()}dp",
                 )
-                DynamicGlassmorphismSlider(
+                DynamicGlassmorphismReadout(
                     label = "Opacity",
-                    value = orbAlphaMultiplier,
-                    onValueChange = onAlphaMultiplierChange,
-                    valueRange = 0.4f..1f,
-                    valueFormatter = { value ->
-                        "${(value * 100f).roundToInt()}%"
-                    },
+                    value = "${(orbAlphaMultiplier * 100f).roundToInt()}%",
                 )
-                DynamicGlassmorphismSlider(
+                DynamicGlassmorphismReadout(
                     label = "Size",
-                    value = orbSizeMultiplier,
-                    onValueChange = onSizeMultiplierChange,
-                    valueRange = 0.6f..1.4f,
-                    valueFormatter = { value ->
-                        "${(value * 100f).roundToInt()}%"
-                    },
+                    value = "${(orbSizeMultiplier * 100f).roundToInt()}%",
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun DynamicGlassmorphismSlider(
-    label: String,
-    value: Float,
-    onValueChange: (Float) -> Unit,
-    valueRange: ClosedFloatingPointRange<Float>,
-    valueFormatter: (Float) -> String,
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.titleSmall,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            Text(
-                text = valueFormatter(value),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.72f),
-                textAlign = TextAlign.End,
-            )
-        }
-        Slider(
-            value = value,
-            onValueChange = onValueChange,
-            valueRange = valueRange,
-            colors = SliderDefaults.colors(
-                thumbColor = MaterialTheme.colorScheme.primary,
-                activeTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.8f),
-            ),
-        )
     }
 }
 
@@ -431,11 +343,8 @@ private class DynamicGlassmorphismPalette(
         lightness = 0.28f,
     )
 
-    fun orbColor(shift: Float, colorMode: DynamicGlassColorMode, band: Int): Color {
-        val baseHue = when (colorMode) {
-            DynamicGlassColorMode.Monochrome -> normalizedHue
-            DynamicGlassColorMode.Tricolor -> triadicHues[band % triadicHues.size]
-        }
+    fun orbColor(shift: Float, band: Int): Color {
+        val baseHue = triadicHues[band % triadicHues.size]
         val saturation = (baseSaturation + shift * 0.25f).coerceIn(0.1f, 0.9f)
         val lightness = (baseLightness + shift * 0.45f).coerceIn(0.2f, 0.95f)
         return Color.hsl(
@@ -451,61 +360,48 @@ private fun Float.wrapHue(): Float {
     return if (raw < 0f) raw + 360f else raw
 }
 
-private enum class DynamicGlassColorMode {
-    Monochrome,
-    Tricolor,
-}
-
 @Composable
-private fun DynamicGlassmorphismColorModeSelector(
-    mode: DynamicGlassColorMode,
-    onModeChange: (DynamicGlassColorMode) -> Unit,
+private fun DynamicGlassmorphismReadout(
+    label: String,
+    value: String,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+        horizontalAlignment = Alignment.Start,
+    ) {
         Text(
-            text = "Color Mode",
+            text = label,
             style = MaterialTheme.typography.titleSmall,
             color = MaterialTheme.colorScheme.onSurface,
         )
-        // 一色／三色を選択するチップを横並びに配置
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            DynamicGlassmorphismModeChip(
-                label = "1 Color",
-                selected = mode == DynamicGlassColorMode.Monochrome,
-                onClick = { onModeChange(DynamicGlassColorMode.Monochrome) },
-            )
-            DynamicGlassmorphismModeChip(
-                label = "3 Colors",
-                selected = mode == DynamicGlassColorMode.Tricolor,
-                onClick = { onModeChange(DynamicGlassColorMode.Tricolor) },
-            )
-        }
+        Text(
+            text = value,
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.72f),
+        )
     }
 }
 
-@Composable
-private fun DynamicGlassmorphismModeChip(
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit,
-) {
-    androidx.compose.material3.FilterChip(
-        selected = selected,
-        onClick = onClick,
-        label = {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelLarge,
-            )
-        },
-        colors = androidx.compose.material3.FilterChipDefaults.filterChipColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-            selectedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.24f),
-            labelColor = MaterialTheme.colorScheme.onSurface,
-            selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
-        ),
-    )
+// 各パラメーターが往復する範囲と周期を定義
+private val HueRange = 0f..360f
+private val BlurRange = 0f..56f
+private val OpacityRange = 0.4f..1f
+private val SizeRange = 0.6f..1.4f
+
+private const val HuePeriodSeconds = 48f
+private const val BlurPeriodSeconds = 36f
+private const val OpacityPeriodSeconds = 44f
+private const val SizePeriodSeconds = 52f
+
+// 範囲と周期からサイン波で滑らかに往復する値を算出
+private fun ClosedFloatingPointRange<Float>.oscillate(
+    elapsedSeconds: Float,
+    periodSeconds: Float,
+    phaseOffset: Float = 0f,
+): Float {
+    require(periodSeconds > 0f)
+    val center = (start + endInclusive) / 2f
+    val amplitude = (endInclusive - start) / 2f
+    val angularFrequency = (2f * PI.toFloat()) / periodSeconds
+    return center + amplitude * sin(angularFrequency * elapsedSeconds + phaseOffset)
 }
