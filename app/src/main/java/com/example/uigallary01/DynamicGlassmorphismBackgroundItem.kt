@@ -51,7 +51,7 @@ fun DynamicGlassmorphismBackgroundItem(
     // タップで展開／折りたたみを切り替える
     var isExpanded by rememberSaveable { mutableStateOf(false) }
     val animatedHeight by animateDpAsState(
-        targetValue = if (isExpanded) 840.dp else 160.dp,
+        targetValue = if (isExpanded) 360.dp else 160.dp,
         label = "dynamicGlassmorphismHeight",
     )
     val elapsedSeconds by state.elapsedSeconds
