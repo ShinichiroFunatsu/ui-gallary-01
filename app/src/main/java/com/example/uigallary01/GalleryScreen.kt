@@ -21,6 +21,7 @@ import com.example.uigallary01.ui.theme.UiGallary01Theme
 fun GalleryScreen(modifier: Modifier = Modifier) {
     val moodySnowState = rememberMoodySnowBackgroundState()
     val dynamicGlassmorphismState = rememberDynamicGlassmorphismBackgroundState()
+    val ambientParticleState = rememberAmbientParticleFieldState()
 
     // ギャラリーに表示する要素を定義
     val galleryItems = listOf(
@@ -39,6 +40,10 @@ fun GalleryScreen(modifier: Modifier = Modifier) {
         GalleryItem(
             title = "Dynamic Glassmorphism Background",
             content = { DynamicGlassmorphismBackgroundItem(state = dynamicGlassmorphismState) }
+        ),
+        GalleryItem(
+            title = "Ambient Particle Photo Overlay",
+            content = { AmbientParticlePhotoItem(state = ambientParticleState) }
         ),
         GalleryItem(
             title = "Moody Snow Background",
